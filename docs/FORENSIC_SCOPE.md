@@ -15,7 +15,7 @@ Il software non:
 
 - certifica autenticita, provenienza o paternita del documento;
 - sostituisce imaging forense, acquisizione forense o conservazione probatoria;
-- garantisce assenza di alterazioni pregresse;
+- esclude da solo la possibilita di alterazioni pregresse;
 - sostituisce l'analisi professionale del contenuto del documento;
 - sostituisce procedure autorizzate, catena di custodia o verbalizzazione.
 
