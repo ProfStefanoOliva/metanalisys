@@ -12,3 +12,5 @@
 - Added explicit Alpha status documentation for the project.
 - Added user responsibility notices across project documentation.
 - Added a call for testers and technical reviewers.
+- Added an alpha scientific validation protocol document.
+- Added an alpha test plan for external testers and reviewers.

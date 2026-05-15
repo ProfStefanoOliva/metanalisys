@@ -25,10 +25,12 @@ Il progetto e pensato come supporto tecnico all'analisi dei metadati. Non dichia
 
 Per un inquadramento prudente dell'uso:
 
-- vedere [docs/FORENSIC_SCOPE.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\FORENSIC_SCOPE.md)
-- vedere [docs/LEGAL_LIMITS.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\LEGAL_LIMITS.md)
-- vedere [docs/CHAIN_OF_CUSTODY.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\CHAIN_OF_CUSTODY.md)
-- vedere [docs/TESTING_AND_VALIDATION.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\TESTING_AND_VALIDATION.md)
+- vedere [docs/FORENSIC_SCOPE.md](docs/FORENSIC_SCOPE.md)
+- vedere [docs/LEGAL_LIMITS.md](docs/LEGAL_LIMITS.md)
+- vedere [docs/CHAIN_OF_CUSTODY.md](docs/CHAIN_OF_CUSTODY.md)
+- vedere [docs/TESTING_AND_VALIDATION.md](docs/TESTING_AND_VALIDATION.md)
+- vedere [docs/SCIENTIFIC_VALIDATION_PROTOCOL.md](docs/SCIENTIFIC_VALIDATION_PROTOCOL.md)
+- vedere [docs/ALPHA_TEST_PLAN.md](docs/ALPHA_TEST_PLAN.md)
 
 ## Formati supportati
 
@@ -87,7 +89,7 @@ Esecuzione test:
 
 Per dettagli sulla suite automatica e sui suoi limiti:
 
-- vedere [docs/TESTING_AND_VALIDATION.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\TESTING_AND_VALIDATION.md)
+- vedere [docs/TESTING_AND_VALIDATION.md](docs/TESTING_AND_VALIDATION.md)
 
 ## Continuous integration
 
@@ -187,4 +189,4 @@ Usare solo campioni sintetici, anonimizzati e privi di riferimenti personali.
 
 ## Licenza
 
-Il progetto e distribuito sotto licenza GNU General Public License v3.0. Per il testo completo fare riferimento al file [LICENSE](C:\Users\oliva\Documents\LavoriAI\metanalisys\LICENSE).
+Il progetto e distribuito sotto licenza GNU General Public License v3.0. Per il testo completo fare riferimento al file [LICENSE](LICENSE).
