@@ -99,13 +99,21 @@ La suite corrente verifica in modo automatico:
 - salvataggio e rilettura del report JSON;
 - analisi OOXML sintetica minimale con presenza di hash, supporto `full`, metadati di base e generazione del report senza crash.
 
-Una prima porzione della matrice di validazione scientifica alpha e ora coperta anche da test automatici sintetici dedicati:
+Una prima porzione della matrice di validazione scientifica alpha è ora coperta anche da test automatici sintetici dedicati:
 
 - `VAL-001` per un campione DOCX OOXML base;
 - `VAL-002` per un campione XLSX OOXML base;
 - `VAL-003` per un campione PPTX OOXML base.
 
-Questi casi sono generati a runtime tramite `zipfile` in file temporanei e hanno finalita di sperimentazione controllata e verifica tecnica riproducibile.
+Questi casi sono generati a runtime tramite `zipfile` in file temporanei e hanno finalità di sperimentazione controllata e verifica tecnica riproducibile.
+
+La copertura automatica include ora anche `VAL-004` per campioni OOXML macro-enabled sintetici:
+
+- `.docm`
+- `.xlsm`
+- `.pptm`
+
+In questi casi il test usa solo placeholder controllati come `vbaProject.bin` sintetico innocuo. Non vengono usate macro reali, non viene eseguito codice macro e l'obiettivo resta limitato alla rilevazione del segnale tecnico attualmente esposto dal core.
 
 ## Cosa i test non dimostrano
 
