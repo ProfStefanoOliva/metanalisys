@@ -189,6 +189,12 @@ Nel repository non devono essere caricati:
 
 Usare solo campioni sintetici, anonimizzati e privi di riferimenti personali.
 
+## Autore
+
+Progetto sviluppato e mantenuto da Stefano Oliva.
+
+Repository: ProfStefanoOliva/metanalisys
+
 ## Licenza
 
 Il progetto e distribuito sotto licenza GNU General Public License v3.0. Per il testo completo fare riferimento al file [LICENSE](LICENSE).
