@@ -2,6 +2,14 @@
 
 `metanalisys` e uno strumento Python di supporto tecnico all'analisi preliminare dei metadati di file Microsoft Office. Il progetto include una versione a riga di comando e una GUI basata su `customtkinter`.
 
+## Development status: Alpha
+
+Il software e attualmente in fase `Alpha`. In questo stato e adatto a valutazione tecnica, test e sperimentazione controllata, ma non deve essere usato come unica base per conclusioni forensi, decisioni procedurali o valutazioni probatorie.
+
+L'uso del software e sotto la responsabilita dell'utilizzatore. Chi lo impiega deve operare solo entro procedure autorizzate, lecite e documentate, tenendo conto dei limiti tecnici del progetto e della necessita di valutazione professionale del caso concreto.
+
+Il progetto beneficia di tester e revisori tecnici. Eventuali test pubblici, issue o contributi devono usare solo file sintetici o comunque non sensibili, senza caricare file Office reali, evidenze o dati personali.
+
 ## Scopo
 
 Il software aiuta a:

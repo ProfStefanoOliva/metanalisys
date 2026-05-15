@@ -29,3 +29,5 @@ Nelle issue pubbliche non devono essere allegati:
 - evidenze digitali;
 - documenti contenenti dati personali;
 - campioni riservati o coperti da segreto, confidenzialita o restrizioni di diffusione.
+
+Non allegare file Office sospetti o sensibili nelle issue pubbliche. Per testare file sconosciuti o potenzialmente malevoli, usare ambienti isolati o dedicati.
