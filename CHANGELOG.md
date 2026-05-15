@@ -14,3 +14,4 @@
 - Added a call for testers and technical reviewers.
 - Added an alpha scientific validation protocol document.
 - Added an alpha test plan for external testers and reviewers.
+- Added a first executable alpha validation subset for VAL-001, VAL-002 and VAL-003 using synthetic OOXML samples generated at runtime.

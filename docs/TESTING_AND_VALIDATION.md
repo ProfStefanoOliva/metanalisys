@@ -99,6 +99,14 @@ La suite corrente verifica in modo automatico:
 - salvataggio e rilettura del report JSON;
 - analisi OOXML sintetica minimale con presenza di hash, supporto `full`, metadati di base e generazione del report senza crash.
 
+Una prima porzione della matrice di validazione scientifica alpha e ora coperta anche da test automatici sintetici dedicati:
+
+- `VAL-001` per un campione DOCX OOXML base;
+- `VAL-002` per un campione XLSX OOXML base;
+- `VAL-003` per un campione PPTX OOXML base.
+
+Questi casi sono generati a runtime tramite `zipfile` in file temporanei e hanno finalita di sperimentazione controllata e verifica tecnica riproducibile.
+
 ## Cosa i test non dimostrano
 
 Il fatto che la suite passi non dimostra:
