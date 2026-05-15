@@ -7,3 +7,4 @@
 - Aligned GUI licensing text and report notice with project publication goals.
 - Added a first synthetic automated test suite for the shared core module.
 - Added `requirements-dev.txt` for test dependencies.
+- Added documentation for the automated test suite and validation limits.

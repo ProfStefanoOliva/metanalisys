@@ -20,6 +20,7 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/FORENSIC_SCOPE.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\FORENSIC_SCOPE.md)
 - vedere [docs/LEGAL_LIMITS.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\LEGAL_LIMITS.md)
 - vedere [docs/CHAIN_OF_CUSTODY.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\CHAIN_OF_CUSTODY.md)
+- vedere [docs/TESTING_AND_VALIDATION.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\TESTING_AND_VALIDATION.md)
 
 ## Formati supportati
 
@@ -75,6 +76,10 @@ Esecuzione test:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest .\tests
 ```
+
+Per dettagli sulla suite automatica e sui suoi limiti:
+
+- vedere [docs/TESTING_AND_VALIDATION.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\TESTING_AND_VALIDATION.md)
 
 ## Uso CLI
 
