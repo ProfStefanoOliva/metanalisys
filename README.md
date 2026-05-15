@@ -31,6 +31,8 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/TESTING_AND_VALIDATION.md](docs/TESTING_AND_VALIDATION.md)
 - vedere [docs/SCIENTIFIC_VALIDATION_PROTOCOL.md](docs/SCIENTIFIC_VALIDATION_PROTOCOL.md)
 - vedere [docs/ALPHA_TEST_PLAN.md](docs/ALPHA_TEST_PLAN.md)
+- vedere [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md)
+- vedere [docs/RELEASE_NOTES_v0.1.0-alpha.1.md](docs/RELEASE_NOTES_v0.1.0-alpha.1.md)
 
 ## Formati supportati
 
