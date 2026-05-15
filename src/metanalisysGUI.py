@@ -343,9 +343,9 @@ class App(ctk.CTk):
             "Informazioni Software",
             (
                 "OFFICE FORENSIC ANALYZER\n\n"
-                "Software di analisi forense documenti Office\n\n"
+                "Software di supporto tecnico all'analisi dei metadati Office\n\n"
                 "Copyright © 2026 Stefano Oliva\n"
-                "Tutti i diritti riservati."
+                "Distribuito sotto licenza GNU GPLv3."
             )
         )
 

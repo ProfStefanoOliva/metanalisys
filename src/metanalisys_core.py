@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import json
 import os
 import re
@@ -54,6 +54,13 @@ CORE_XML_NAMESPACES = {
 
 @dataclass(frozen=True)
 class OfficeFormatSpec:
+    """Describe a recognized Office extension and its current analysis scope.
+
+    Fields identify file family, container type and declared support level.
+    The structure documents technical coverage only and does not imply
+    forensic completeness or evidentiary validity.
+    """
+
     extension: str
     family: str
     label: str
@@ -117,6 +124,19 @@ class InvalidOfficeFileError(MetanalisysError):
 
 
 def get_format_spec(filepath: str) -> OfficeFormatSpec:
+    """Return the registered Office format specification for a file path.
+
+    Args:
+        filepath: Path whose extension is used for format lookup.
+    Returns:
+        The matching OfficeFormatSpec entry.
+    Raises:
+        UnsupportedFormatError: If the extension is not recognized.
+    Limits:
+        Recognition is extension-based and is not a forensic validation of
+        actual file content.
+    """
+
     extension = os.path.splitext(filepath)[1].lower()
     spec = OFFICE_FORMATS.get(extension)
     if spec is None:
@@ -125,13 +145,26 @@ def get_format_spec(filepath: str) -> OfficeFormatSpec:
 
 
 def ensure_readable_file(filepath: str) -> str:
+    """Validate that a target path exists and can be opened in read-only mode.
+
+    Args:
+        filepath: User-supplied path to inspect.
+    Returns:
+        Absolute normalized path for later analysis.
+    Raises:
+        FileAccessError: If the path is invalid, missing or unreadable.
+    Limits:
+        This check reduces access errors but does not prevent operating system
+        metadata such as access time from changing during later reads.
+    """
+
     if not filepath or not isinstance(filepath, str):
         raise FileAccessError("Percorso file non valido.")
     normalized_path = os.path.abspath(filepath)
     if not os.path.exists(normalized_path):
         raise FileAccessError("Il file specificato non esiste.")
     if not os.path.isfile(normalized_path):
-        raise FileAccessError("Il percorso specificato non è un file.")
+        raise FileAccessError("Il percorso specificato non Ã¨ un file.")
     try:
         with open(normalized_path, "rb"):
             pass
@@ -145,6 +178,20 @@ def ensure_readable_file(filepath: str) -> str:
 
 
 def compute_file_hashes(filepath: str, algorithms: Iterable[str] = HASH_ALGORITHMS) -> dict[str, str]:
+    """Compute streaming file hashes without loading the whole file in memory.
+
+    Args:
+        filepath: Path to the file to hash.
+        algorithms: Iterable of hashlib algorithm names to apply.
+    Returns:
+        Mapping of algorithm name to hexadecimal digest.
+    Raises:
+        FileAccessError: If the file cannot be read safely.
+    Limits:
+        Hashes identify the bytes read at analysis time but do not, by
+        themselves, establish chain of custody or evidentiary provenance.
+    """
+
     hashers = {name: hashlib.new(name) for name in algorithms}
     try:
         with open(filepath, "rb") as file_handle:
@@ -237,7 +284,7 @@ class OfficeForensicAnalyzer:
         try:
             root = ET.fromstring(core_xml)
         except ET.ParseError:
-            self.add_warning("Il file docProps/core.xml non è stato interpretato correttamente.")
+            self.add_warning("Il file docProps/core.xml non Ã¨ stato interpretato correttamente.")
             return
         metadata = {}
         for key, xpath in CORE_XML_FIELDS.items():
@@ -260,7 +307,7 @@ class OfficeForensicAnalyzer:
         try:
             root = ET.fromstring(app_xml)
         except ET.ParseError:
-            self.add_warning("Il file docProps/app.xml non è stato interpretato correttamente.")
+            self.add_warning("Il file docProps/app.xml non Ã¨ stato interpretato correttamente.")
             return
         metadata = {}
         for child in root:
@@ -346,7 +393,7 @@ class OfficeForensicAnalyzer:
                 self.analyze_macros(zip_ref)
         except zipfile.BadZipFile as exc:
             raise InvalidOfficeFileError(
-                "Il file è riconosciuto come Office Open XML ma non è un pacchetto ZIP valido o è corrotto."
+                "Il file Ã¨ riconosciuto come Office Open XML ma non Ã¨ un pacchetto ZIP valido o Ã¨ corrotto."
             ) from exc
 
     def analyze_limited_format(self) -> None:
@@ -362,6 +409,19 @@ class OfficeForensicAnalyzer:
 
 
 def analyze_office_file(filepath: str) -> dict[str, Any]:
+    """Run the shared Office analysis pipeline and return structured results.
+
+    Args:
+        filepath: Path to a recognized Office file.
+    Returns:
+        Dictionary containing hashes, file information and extracted findings.
+    Raises:
+        MetanalisysError subclasses for access, format or package errors.
+    Limits:
+        Output is intended as technical support for preliminary analysis and
+        must be interpreted within an authorized procedure.
+    """
+
     analyzer = OfficeForensicAnalyzer(filepath)
     return analyzer.run()
 
@@ -393,6 +453,17 @@ def _append_list(lines: list[str], section_name: str, values: list[Any], empty_m
 
 
 def format_text_report(results: dict[str, Any]) -> str:
+    """Render a human-readable text report from structured analysis results.
+
+    Args:
+        results: Analysis dictionary returned by the shared core.
+    Returns:
+        Plain-text report suitable for CLI output or TXT export.
+    Limits:
+        The rendered report summarizes technical observations and is not a
+        substitute for professional forensic conclusions.
+    """
+
     lines: list[str] = []
     lines.append("=" * 70)
     lines.append("OFFICE FORENSIC ANALYSIS REPORT")
@@ -439,6 +510,13 @@ def format_text_report(results: dict[str, Any]) -> str:
     score = results.get("risk_score", 0)
     lines.append(f"Punteggio: {score}")
     lines.append(f"Livello: {format_risk_level(score)}")
+
+    lines.append("\n[FORENSIC NOTICE]\n")
+    lines.append(
+        "Il report è un supporto tecnico all'analisi dei metadati. "
+        "Le conclusioni forensi richiedono procedura autorizzata, "
+        "catena di custodia e valutazione professionale."
+    )
     return "\n".join(lines)
 
 
@@ -451,11 +529,35 @@ def build_report_paths(filepath: str) -> dict[str, str]:
 
 
 def save_text_report(report_text: str, destination: str) -> None:
+    """Persist a rendered text report to disk using UTF-8 encoding.
+
+    Args:
+        report_text: Plain-text report content to save.
+        destination: Output path for the TXT report.
+    Returns:
+        None.
+    Limits:
+        Saving a report preserves output content only; storage controls and
+        retention requirements remain the operator's responsibility.
+    """
+
     with open(destination, "w", encoding="utf-8") as file_handle:
         file_handle.write(report_text)
 
 
 def save_json_report(results: dict[str, Any], destination: str) -> None:
+    """Serialize structured analysis results to a JSON report on disk.
+
+    Args:
+        results: Analysis dictionary to serialize.
+        destination: Output path for the JSON file.
+    Returns:
+        None.
+    Limits:
+        JSON export reflects the collected technical data and does not add any
+        forensic certification or legal status to the report.
+    """
+
     with open(destination, "w", encoding="utf-8") as file_handle:
         json.dump(results, file_handle, indent=4, ensure_ascii=False)
 
