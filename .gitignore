@@ -40,3 +40,7 @@ forensic_images/
 *.raw
 *.img
 *.aff4
+
+# Generated forensic reports
+*_forensic_report.json
+*_forensic_report.txt
