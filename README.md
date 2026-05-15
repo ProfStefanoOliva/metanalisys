@@ -81,6 +81,15 @@ Per dettagli sulla suite automatica e sui suoi limiti:
 
 - vedere [docs/TESTING_AND_VALIDATION.md](C:\Users\oliva\Documents\LavoriAI\metanalisys\docs\TESTING_AND_VALIDATION.md)
 
+## Continuous integration
+
+Il repository include una workflow GitHub Actions che esegue automaticamente:
+
+- `py_compile` sui principali file Python del progetto;
+- `pytest` sulla cartella `tests`.
+
+La CI usa i test sintetici gia presenti nel repository e non richiede file Office reali. Anche quando la pipeline termina con esito positivo, l'esito resta una verifica tecnica del software e non costituisce validazione probatoria o valutazione forense professionale.
+
 ## Uso CLI
 
 Avvio con percorso file come argomento:
