@@ -54,6 +54,28 @@ python -m venv .venv
 python -m pip install Pillow customtkinter
 ```
 
+## Testing
+
+Installazione dipendenze runtime:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r .\requirements.txt
+```
+
+Installazione dipendenze di test:
+
+```powershell
+python -m pip install -r .\requirements-dev.txt
+```
+
+Esecuzione test:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest .\tests
+```
+
 ## Uso CLI
 
 Avvio con percorso file come argomento:
