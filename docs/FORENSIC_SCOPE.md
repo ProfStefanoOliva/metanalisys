@@ -52,3 +52,11 @@ L'uso di supporti in sola lettura o di workflow equivalenti puo contribuire a ri
 ## Nota su access time
 
 La semplice lettura di un file puo influenzare l'`accessed time` a seconda del sistema operativo, del file system, della configurazione del sistema e degli strumenti impiegati. Questo campo va quindi interpretato con prudenza e nel contesto della procedura effettivamente seguita.
+
+## Alpha status and user responsibility
+
+Il progetto e in stato `Alpha` e non puo essere considerato validato sul campo per tutti i possibili scenari operativi o per tutte le varianti di file Microsoft Office.
+
+L'utilizzatore resta responsabile dell'uso del software, della scelta del contesto operativo e dell'interpretazione dei risultati. Il report prodotto deve essere trattato come supporto tecnico all'analisi preliminare, non come conclusione forense autonoma.
+
+Quando il contesto lo richiede, l'impiego del software dovrebbe avvenire entro procedura autorizzata, con adeguata catena di custodia e con successiva valutazione professionale dei dati raccolti e dei limiti del metodo adottato.

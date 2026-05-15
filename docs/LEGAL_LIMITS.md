@@ -34,3 +34,11 @@ Il software non sostituisce:
 - catena di custodia;
 - procedure dell'autorita o dell'organizzazione competente;
 - valutazione professionale, tecnica o legale del caso concreto.
+
+## User responsibility
+
+Il software non fornisce consulenza legale e non sostituisce autorizzazioni, incarichi, verbali, catena di custodia o valutazioni professionali.
+
+L'utilizzatore deve verificare il quadro normativo e procedurale applicabile al proprio caso, incluse eventuali regole interne, misure di sicurezza, obblighi di riservatezza e limiti sul trattamento dei dati analizzati.
+
+L'utilizzatore e responsabile dell'uso del software, delle modalita operative adottate e del trattamento dei dati contenuti nei file esaminati.

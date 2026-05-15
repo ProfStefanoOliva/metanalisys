@@ -43,3 +43,14 @@ Per modifiche che toccano il comportamento del tool, indica almeno:
 - Spiega l'impatto atteso della modifica.
 - Non allegare file sensibili nelle issue pubbliche.
 - Se usi campioni sintetici, spiega come sono stati generati.
+
+## Call for testers
+
+Tester, tecnici e revisori sono invitati a contribuire con:
+
+- bug report;
+- casi riproducibili;
+- campioni sintetici;
+- indicazioni sui limiti riscontrati.
+
+Non devono essere caricati file reali, sensibili o provenienti da casi concreti. Per test pubblici e discussioni aperte usare solo contenuti sintetici o comunque non sensibili.
