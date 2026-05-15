@@ -143,7 +143,7 @@ Quando si opera su casi reali o su materiale non pubblico, il software deve esse
 | VAL-001 | DOCX | OOXML sintetico base | Verificare lettura `core.xml` | `author` e/o `created` impostati intenzionalmente | Hash presenti, formato `full`, metadati coerenti | Planned |
 | VAL-002 | XLSX | OOXML sintetico base | Verificare parsing metadati di base | `core.xml` con valori noti | Hash presenti, formato `full`, report senza crash | Planned |
 | VAL-003 | PPTX | OOXML sintetico base | Verificare supporto OOXML PowerPoint | `core.xml` con metadati controllati | Hash presenti, formato `full`, JSON strutturato | Planned |
-| VAL-004 | DOCM/XLSM/PPTM | OOXML sintetico con placeholder macro | Verificare rilevazione indicatore macro | Entry ZIP contenente riferimento `vba` controllato | Indicatore macro o warning coerente | Planned |
+| VAL-004 | DOCM/XLSM/PPTM | OOXML sintetico con placeholder macro | Verificare rilevazione indicatore macro | Entry ZIP contenente riferimento `vba` controllato | Indicatore macro o warning coerente | Covered by synthetic automated tests |
 | VAL-005 | OOXML corrotto | Archivio ZIP invalido o incompleto | Verificare gestione errore | Campione costruito per fallire il parsing package | Errore gestito senza crash non controllato | Planned |
 | VAL-006 | DOC legacy | File sintetico legacy placeholder | Verificare supporto limitato | Estensione `.doc`, contenuto non trattato come OOXML | Hash presenti, supporto `limited`, warning esplicito | Planned |
 | VAL-007 | Estensione non supportata | File sintetico non Office | Verificare rifiuto formato | Estensione fuori registry | `UnsupportedFormatError` o messaggio coerente | Planned |

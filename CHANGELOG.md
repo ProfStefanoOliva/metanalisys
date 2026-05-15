@@ -15,3 +15,4 @@
 - Added an alpha scientific validation protocol document.
 - Added an alpha test plan for external testers and reviewers.
 - Added a first executable alpha validation subset for VAL-001, VAL-002 and VAL-003 using synthetic OOXML samples generated at runtime.
+- Added executable alpha coverage for VAL-004 using synthetic macro-enabled OOXML placeholders for DOCM, XLSM and PPTM.
