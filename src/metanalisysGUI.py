@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import customtkinter as ctk
+from PIL import Image
 
 from tkinter import filedialog
 from tkinter import messagebox
@@ -27,6 +28,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 ICON_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "metanalisys_icon.ico"
+WATERMARK_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "metanalisys_icon.png"
 
 # ============================================================
 # GUI
@@ -50,6 +52,8 @@ class App(ctk.CTk):
         self.selected_file = None
         self.report_text = ""
         self.report_results = None
+        self.watermark_label = None
+        self.watermark_image = None
 
         # ====================================================
         # TOP FRAME
@@ -168,17 +172,33 @@ class App(ctk.CTk):
         # TEXTBOX
         # ====================================================
 
-        self.textbox = ctk.CTkTextbox(
+        self.report_frame = ctk.CTkFrame(
             self,
+            fg_color="transparent"
+        )
+
+        self.report_frame.pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10
+        )
+
+        self.textbox = ctk.CTkTextbox(
+            self.report_frame,
             font=("Consolas", 14)
         )
 
         self.textbox.pack(
             fill="both",
             expand=True,
-            padx=10,
-            pady=10
+            padx=0,
+            pady=0
         )
+        self.textbox.bind("<<Modified>>", self._on_textbox_modified)
+
+        self._setup_report_watermark()
+        self._update_report_watermark()
 
         # ====================================================
         # STATUS BAR
@@ -205,6 +225,59 @@ class App(ctk.CTk):
             self.iconbitmap(default=str(ICON_PATH))
         except Exception:
             pass
+
+    def _setup_report_watermark(self) -> None:
+        if not WATERMARK_PATH.is_file():
+            return
+
+        try:
+            watermark = Image.open(WATERMARK_PATH).convert("RGBA")
+            watermark.thumbnail((320, 320))
+
+            alpha_channel = watermark.getchannel("A")
+            alpha_channel = alpha_channel.point(lambda value: int(value * 0.2))
+            watermark.putalpha(alpha_channel)
+
+            self.watermark_image = ctk.CTkImage(
+                light_image=watermark,
+                dark_image=watermark,
+                size=watermark.size,
+            )
+
+            self.watermark_label = ctk.CTkLabel(
+                self.report_frame,
+                text="",
+                image=self.watermark_image,
+                fg_color="transparent",
+            )
+
+            self.watermark_label.place(
+                relx=0.5,
+                rely=0.5,
+                anchor="center",
+            )
+        except Exception:
+            self.watermark_image = None
+            self.watermark_label = None
+
+    def _update_report_watermark(self) -> None:
+        if self.watermark_label is None:
+            return
+
+        current_text = self.textbox.get("1.0", "end").strip()
+
+        if current_text:
+            self.watermark_label.place_forget()
+        else:
+            self.watermark_label.place(
+                relx=0.5,
+                rely=0.5,
+                anchor="center",
+            )
+
+    def _on_textbox_modified(self, _event=None) -> None:
+        self._update_report_watermark()
+        self.textbox.edit_modified(False)
 
     # ========================================================
     # OPEN FILE
@@ -265,6 +338,7 @@ class App(ctk.CTk):
                 "1.0",
                 self.report_text
             )
+            self._update_report_watermark()
 
             self.status.configure(
                 text="Analisi completata."
