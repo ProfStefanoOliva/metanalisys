@@ -4,6 +4,7 @@
 # ============================================================
 
 import os
+from pathlib import Path
 
 import customtkinter as ctk
 
@@ -25,6 +26,8 @@ from metanalisys_core import save_text_report
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+ICON_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "metanalisys_icon.ico"
+
 # ============================================================
 # GUI
 # ============================================================
@@ -42,6 +45,7 @@ class App(ctk.CTk):
         self.title("Office Forensic Analyzer")
         self.geometry("1400x850")
         self.minsize(1200, 700)
+        self._set_window_icon()
 
         self.selected_file = None
         self.report_text = ""
@@ -190,6 +194,17 @@ class App(ctk.CTk):
             padx=10,
             pady=(0, 10)
         )
+
+    def _set_window_icon(self) -> None:
+        # If the icon is missing or not supported by the current platform,
+        # keep the GUI usable and continue startup without raising.
+        if not ICON_PATH.is_file():
+            return
+
+        try:
+            self.iconbitmap(default=str(ICON_PATH))
+        except Exception:
+            pass
 
     # ========================================================
     # OPEN FILE
