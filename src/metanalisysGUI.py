@@ -357,10 +357,11 @@ class App(ctk.CTk):
         messagebox.showinfo(
             "Informazioni Software",
             (
-                "OFFICE FORENSIC ANALYZER\n\n"
-                "Software di supporto tecnico all'analisi dei metadati Office\n\n"
+                "metanalisys\n\n"
+                "Analisi preliminare dei metadati Office.\n"
+                "Software alpha di supporto tecnico.\n\n"
                 "Copyright © 2026 Stefano Oliva\n"
-                "Distribuito sotto licenza GNU GPLv3."
+                "Licenza: GNU General Public License v3.0"
             )
         )
 
