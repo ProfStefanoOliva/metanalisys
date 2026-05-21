@@ -28,6 +28,7 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/FORENSIC_SCOPE.md](docs/FORENSIC_SCOPE.md)
 - vedere [docs/LEGAL_LIMITS.md](docs/LEGAL_LIMITS.md)
 - vedere [docs/CHAIN_OF_CUSTODY.md](docs/CHAIN_OF_CUSTODY.md)
+- vedere [docs/RISK_SCORING.md](docs/RISK_SCORING.md)
 - vedere [docs/TESTING_AND_VALIDATION.md](docs/TESTING_AND_VALIDATION.md)
 - vedere [docs/SCIENTIFIC_VALIDATION_PROTOCOL.md](docs/SCIENTIFIC_VALIDATION_PROTOCOL.md)
 - vedere [docs/ALPHA_TEST_PLAN.md](docs/ALPHA_TEST_PLAN.md)
