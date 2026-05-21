@@ -115,7 +115,121 @@ def test_format_text_report_contains_required_sections() -> None:
     assert "[FILE INFO]" in report
     assert "[FORMAT SUPPORT]" in report
     assert "[RISK SCORE]" in report
+    assert "[DETTAGLIO ASSEGNAZIONE PUNTEGGIO]" in report
     assert "[FORENSIC NOTICE]" in report
+
+
+def test_format_text_report_without_suspicious_indicators_shows_empty_breakdown() -> None:
+    results = {
+        "hashes": {"sha256": "abc", "sha512": "def"},
+        "file_info": {"filename": "sample.docx", "extension": ".docx"},
+        "format": {
+            "extension": ".docx",
+            "family": "Word",
+            "label": "Word Document",
+            "container": "ooxml",
+            "metadata_support": "full",
+            "notes": "Open XML metadata extraction is supported.",
+        },
+        "metadata": {},
+        "extended_metadata": {},
+        "software_detected": [],
+        "authors_detected": [],
+        "user_paths": [],
+        "relationships": [],
+        "embedded_files": [],
+        "images": [],
+        "analysis_warnings": [],
+        "suspicious_indicators": [],
+        "risk_score": 0,
+    }
+
+    report = format_text_report(results)
+
+    assert "[RISK SCORE]" in report
+    assert "[DETTAGLIO ASSEGNAZIONE PUNTEGGIO]" in report
+    assert "Nessun punteggio assegnato: non sono stati rilevati indicatori sospetti." in report
+
+
+def test_format_text_report_single_indicator_shows_score_breakdown() -> None:
+    results = {
+        "hashes": {"sha256": "abc", "sha512": "def"},
+        "file_info": {"filename": "sample.docx", "extension": ".docx"},
+        "format": {
+            "extension": ".docx",
+            "family": "Word",
+            "label": "Word Document",
+            "container": "ooxml",
+            "metadata_support": "full",
+            "notes": "Open XML metadata extraction is supported.",
+        },
+        "metadata": {},
+        "extended_metadata": {},
+        "software_detected": [],
+        "authors_detected": [],
+        "user_paths": [],
+        "relationships": [],
+        "embedded_files": [],
+        "images": [],
+        "analysis_warnings": [],
+        "suspicious_indicators": [
+            {"indicator": "Macro VBA rilevate: 1", "score": 15},
+        ],
+        "risk_score": 15,
+    }
+
+    report = format_text_report(results)
+
+    assert "[DETTAGLIO ASSEGNAZIONE PUNTEGGIO]" in report
+    assert "Macro VBA rilevate: 1" in report
+    assert "+15" in report
+    assert "Progressivo" in report
+
+
+def test_format_text_report_multiple_indicators_show_correct_progressive() -> None:
+    results = {
+        "hashes": {"sha256": "abc", "sha512": "def"},
+        "file_info": {"filename": "sample.docx", "extension": ".docx"},
+        "format": {
+            "extension": ".docx",
+            "family": "Word",
+            "label": "Word Document",
+            "container": "ooxml",
+            "metadata_support": "full",
+            "notes": "Open XML metadata extraction is supported.",
+        },
+        "metadata": {},
+        "extended_metadata": {},
+        "software_detected": [],
+        "authors_detected": [],
+        "user_paths": [],
+        "relationships": [],
+        "embedded_files": [],
+        "images": [],
+        "analysis_warnings": [],
+        "suspicious_indicators": [
+            {"indicator": "Autori multipli rilevati: ['A', 'B']", "score": 30},
+            {"indicator": "Macro VBA rilevate: 1", "score": 15},
+            {
+                "indicator": (
+                    "Indicatore molto lungo creato per verificare il wrapping del testo "
+                    "nella tabella dettagliata del punteggio senza perdere informazioni."
+                ),
+                "score": 10,
+            },
+        ],
+        "risk_score": 55,
+    }
+
+    report = format_text_report(results)
+
+    assert "[RISK SCORE]" in report
+    assert "Punteggio: 55" in report
+    assert "[DETTAGLIO ASSEGNAZIONE PUNTEGGIO]" in report
+    assert "Autori multipli rilevati: ['A', 'B']" in report
+    assert "Macro VBA rilevate: 1" in report
+    assert "Indicatore molto lungo creato per verificare il wrapping" in report
+    assert "del punteggio senza perdere informazioni." in report
 
 
 def test_save_json_report_writes_hashes_key(tmp_path: Path) -> None:
@@ -163,4 +277,3 @@ def test_analyze_office_file_with_synthetic_ooxml_package(tmp_path: Path) -> Non
     assert results["metadata"]["author"] == "Synthetic Tester"
     assert results["metadata"]["created"] == "2026-05-15T10:00:00Z"
     assert "OFFICE FORENSIC ANALYSIS REPORT" in report
-

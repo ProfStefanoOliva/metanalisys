@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import textwrap
 import zipfile
 
 from dataclasses import dataclass
@@ -452,6 +453,62 @@ def _append_list(lines: list[str], section_name: str, values: list[Any], empty_m
         lines.append(f"- {value}")
 
 
+def _format_risk_score_breakdown(results: dict[str, Any]) -> list[str]:
+    indicators = results.get("suspicious_indicators", [])
+    lines = ["\n[DETTAGLIO ASSEGNAZIONE PUNTEGGIO]\n"]
+
+    if not indicators:
+        lines.append("Nessun punteggio assegnato: non sono stati rilevati indicatori sospetti.")
+        return lines
+
+    index_width = len("N.")
+    indicator_width = 54
+    score_width = len("Punteggio")
+    running_width = len("Progressivo")
+
+    lines.append(
+        f"{'N.':<{index_width}} | "
+        f"{'Indicatore':<{indicator_width}} | "
+        f"{'Punteggio':>{score_width}} | "
+        f"{'Progressivo':>{running_width}}"
+    )
+    lines.append(
+        f"{'-' * index_width}-+-"
+        f"{'-' * indicator_width}-+-"
+        f"{'-' * score_width}-+-"
+        f"{'-' * running_width}"
+    )
+
+    running_total = 0
+    for index, item in enumerate(indicators, start=1):
+        indicator_text = str(item.get("indicator", ""))
+        score = int(item.get("score", 0))
+        running_total += score
+        wrapped_indicator = textwrap.wrap(
+            indicator_text,
+            width=indicator_width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ) or [""]
+
+        lines.append(
+            f"{index:<{index_width}} | "
+            f"{wrapped_indicator[0]:<{indicator_width}} | "
+            f"{score:+>{score_width}} | "
+            f"{running_total:>{running_width}}"
+        )
+
+        for extra_line in wrapped_indicator[1:]:
+            lines.append(
+                f"{'':<{index_width}} | "
+                f"{extra_line:<{indicator_width}} | "
+                f"{'':>{score_width}} | "
+                f"{'':>{running_width}}"
+            )
+
+    return lines
+
+
 def format_text_report(results: dict[str, Any]) -> str:
     """Render a human-readable text report from structured analysis results.
 
@@ -510,6 +567,7 @@ def format_text_report(results: dict[str, Any]) -> str:
     score = results.get("risk_score", 0)
     lines.append(f"Punteggio: {score}")
     lines.append(f"Livello: {format_risk_level(score)}")
+    lines.extend(_format_risk_score_breakdown(results))
 
     lines.append("\n[FORENSIC NOTICE]\n")
     lines.append(
@@ -560,4 +618,3 @@ def save_json_report(results: dict[str, Any], destination: str) -> None:
 
     with open(destination, "w", encoding="utf-8") as file_handle:
         json.dump(results, file_handle, indent=4, ensure_ascii=False)
-
