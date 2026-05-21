@@ -36,6 +36,7 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/ALPHA_TEST_PLAN.md](docs/ALPHA_TEST_PLAN.md)
 - vedere [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md)
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.1.md](docs/RELEASE_NOTES_v0.1.0-alpha.1.md)
+- vedere [docs/RELEASE_NOTES_v0.1.0-alpha.3.md](docs/RELEASE_NOTES_v0.1.0-alpha.3.md)
 
 ## Formati supportati
 
