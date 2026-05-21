@@ -6,6 +6,7 @@ import textwrap
 import zipfile
 
 from dataclasses import dataclass
+from datetime import UTC
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -51,6 +52,45 @@ CORE_XML_NAMESPACES = {
     "cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
     "dcterms": "http://purl.org/dc/terms/",
 }
+
+RISK_WEIGHTS = {
+    "multiple_authors": 10,
+    "multiple_user_paths": 15,
+    "multiple_software": 15,
+    "embedded_files": 15,
+    "multiple_image_software": 15,
+    "macro_enabled_vba": 15,
+    "non_macro_enabled_vba": 60,
+    "ooxml_modified_before_created": 40,
+    "filesystem_ooxml_modified_delta": 20,
+}
+
+MACRO_ENABLED_EXTENSIONS = {
+    ".docm",
+    ".dotm",
+    ".xlsm",
+    ".xltm",
+    ".xlam",
+    ".pptm",
+    ".potm",
+    ".ppsm",
+    ".vsdm",
+    ".vstm",
+}
+
+NON_MACRO_ENABLED_EXTENSIONS = {
+    ".docx",
+    ".dotx",
+    ".xlsx",
+    ".xltx",
+    ".pptx",
+    ".potx",
+    ".ppsx",
+    ".vsdx",
+    ".vstx",
+}
+
+FILESYSTEM_OOXML_MODIFIED_DELTA_DAYS = 365
 
 
 @dataclass(frozen=True)
@@ -234,6 +274,32 @@ def build_base_results(filepath: str, spec: OfficeFormatSpec, hashes: dict[str, 
     }
 
 
+def _normalize_datetime_for_comparison(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
+def _parse_metadata_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return _normalize_datetime_for_comparison(value)
+    if not isinstance(value, str):
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+
+    try:
+        return _normalize_datetime_for_comparison(datetime.fromisoformat(normalized))
+    except ValueError:
+        return None
+
+
 class OfficeForensicAnalyzer:
     def __init__(self, filepath: str):
         self.filepath = ensure_readable_file(filepath)
@@ -299,7 +365,10 @@ class OfficeForensicAnalyzer:
                 authors.append(value)
         self.results["authors_detected"] = authors
         if len(authors) > 1:
-            self.add_indicator(f"Autori multipli rilevati: {authors}", 30)
+            self.add_indicator(
+                f"Autori multipli rilevati: {authors}",
+                RISK_WEIGHTS["multiple_authors"],
+            )
 
     def analyze_extended_metadata(self, zip_ref: zipfile.ZipFile) -> None:
         app_xml = self.read_xml_from_zip(zip_ref, "docProps/app.xml")
@@ -331,7 +400,10 @@ class OfficeForensicAnalyzer:
             paths.update(found_paths)
         self.results["user_paths"] = sorted(paths)
         if len(paths) > 1:
-            self.add_indicator(f"Percorsi utente multipli rilevati: {len(paths)}", 25)
+            self.add_indicator(
+                f"Percorsi utente multipli rilevati: {len(paths)}",
+                RISK_WEIGHTS["multiple_user_paths"],
+            )
 
     def analyze_all_xml(self, zip_ref: zipfile.ZipFile) -> None:
         software_found = set(self.results["software_detected"])
@@ -345,13 +417,19 @@ class OfficeForensicAnalyzer:
                     software_found.add(pattern)
         self.results["software_detected"] = sorted(software_found)
         if len(software_found) > 1:
-            self.add_indicator(f"Software multipli rilevati: {sorted(software_found)}", 35)
+            self.add_indicator(
+                f"Software multipli rilevati: {sorted(software_found)}",
+                RISK_WEIGHTS["multiple_software"],
+            )
 
     def analyze_embedded_files(self, zip_ref: zipfile.ZipFile) -> None:
         embedded = [name for name in zip_ref.namelist() if "embeddings/" in name.lower()]
         self.results["embedded_files"] = embedded
         if embedded:
-            self.add_indicator(f"File incorporati rilevati: {len(embedded)}", 10)
+            self.add_indicator(
+                f"File incorporati rilevati: {len(embedded)}",
+                RISK_WEIGHTS["embedded_files"],
+            )
 
     def analyze_images(self, zip_ref: zipfile.ZipFile) -> None:
         software_list = set()
@@ -375,12 +453,53 @@ class OfficeForensicAnalyzer:
             except Exception as exc:
                 self.results["images"].append({"file": media, "error": str(exc)})
         if len(software_list) > 1:
-            self.add_indicator(f"Immagini modificate con software differenti: {sorted(software_list)}", 20)
+            self.add_indicator(
+                f"Immagini modificate con software differenti: {sorted(software_list)}",
+                RISK_WEIGHTS["multiple_image_software"],
+            )
 
     def analyze_macros(self, zip_ref: zipfile.ZipFile) -> None:
         macros = [name for name in zip_ref.namelist() if "vba" in name.lower()]
         if macros:
-            self.add_indicator(f"Macro VBA rilevate: {len(macros)}", 15)
+            if self.spec.extension in MACRO_ENABLED_EXTENSIONS:
+                self.add_indicator(
+                    f"Macro VBA rilevate in formato macro-enabled: {len(macros)}",
+                    RISK_WEIGHTS["macro_enabled_vba"],
+                )
+            elif self.spec.extension in NON_MACRO_ENABLED_EXTENSIONS:
+                self.add_indicator(
+                    f"Macro VBA rilevate in formato non macro-enabled: {len(macros)}",
+                    RISK_WEIGHTS["non_macro_enabled_vba"],
+                )
+            else:
+                self.add_indicator(
+                    f"Macro VBA rilevate: {len(macros)}",
+                    RISK_WEIGHTS["macro_enabled_vba"],
+                )
+
+    def analyze_temporal_indicators(self) -> None:
+        metadata = self.results.get("metadata", {})
+        file_info = self.results.get("file_info", {})
+
+        created_dt = _parse_metadata_datetime(metadata.get("created"))
+        modified_dt = _parse_metadata_datetime(metadata.get("modified"))
+        filesystem_modified_dt = _parse_metadata_datetime(file_info.get("modified"))
+
+        if created_dt is not None and modified_dt is not None and modified_dt < created_dt:
+            self.add_indicator(
+                "Incongruenza cronologica OOXML: data modifica precedente alla data creazione",
+                RISK_WEIGHTS["ooxml_modified_before_created"],
+            )
+
+        if modified_dt is None or filesystem_modified_dt is None:
+            return
+
+        delta = abs(filesystem_modified_dt - modified_dt)
+        if delta.days > FILESYSTEM_OOXML_MODIFIED_DELTA_DAYS:
+            self.add_indicator(
+                "Scostamento significativo tra data modifica OOXML e data modifica filesystem",
+                RISK_WEIGHTS["filesystem_ooxml_modified_delta"],
+            )
 
     def analyze_ooxml_package(self) -> None:
         try:
@@ -404,6 +523,7 @@ class OfficeForensicAnalyzer:
         self.analyze_file_info()
         if self.spec.container == "ooxml":
             self.analyze_ooxml_package()
+            self.analyze_temporal_indicators()
         else:
             self.analyze_limited_format()
         return self.results
@@ -428,11 +548,13 @@ def analyze_office_file(filepath: str) -> dict[str, Any]:
 
 
 def format_risk_level(score: int) -> str:
-    if score < 20:
+    if score < 25:
         return "BASSO"
-    if score < 50:
+    if score < 60:
         return "MEDIO"
-    return "ALTO"
+    if score < 100:
+        return "ALTO"
+    return "CRITICO"
 
 
 def _append_key_values(lines: list[str], section_name: str, values: dict[str, Any]) -> None:
@@ -567,6 +689,10 @@ def format_text_report(results: dict[str, Any]) -> str:
     score = results.get("risk_score", 0)
     lines.append(f"Punteggio: {score}")
     lines.append(f"Livello: {format_risk_level(score)}")
+    lines.append(
+        "Interpretazione: indice tecnico di anomalia documentale, "
+        "non prova automatica di manomissione."
+    )
     lines.extend(_format_risk_score_breakdown(results))
 
     lines.append("\n[FORENSIC NOTICE]\n")
