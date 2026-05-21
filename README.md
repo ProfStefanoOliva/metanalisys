@@ -23,6 +23,8 @@ Il software aiuta a:
 
 Il progetto e pensato come supporto tecnico all'analisi dei metadati. Non dichiara conformita forense assoluta, non sostituisce catena di custodia, verbali, autorizzazioni, valutazione professionale o normativa processuale applicabile.
 
+Il rischio riportato dal tool va interpretato come indice tecnico di anomalia documentale e non come conclusione automatica sul file analizzato.
+
 Per un inquadramento prudente dell'uso:
 
 - vedere [docs/FORENSIC_SCOPE.md](docs/FORENSIC_SCOPE.md)
