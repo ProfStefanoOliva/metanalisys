@@ -17,11 +17,13 @@ from metanalisys_core import analyze_office_folder
 from metanalisys_core import build_folder_report_paths
 from metanalisys_core import compute_file_hashes
 from metanalisys_core import ensure_readable_file
+from metanalisys_core import format_folder_html_report
 from metanalisys_core import format_folder_text_report
 from metanalisys_core import format_risk_level
 from metanalisys_core import format_text_report
 from metanalisys_core import get_format_spec
 from metanalisys_core import save_folder_csv_report
+from metanalisys_core import save_folder_html_report
 from metanalisys_core import save_folder_json_report
 from metanalisys_core import save_folder_text_report
 from metanalisys_core import save_json_report
@@ -579,6 +581,7 @@ def test_build_folder_report_paths_uses_folder_name(tmp_path: Path) -> None:
         "txt": f"{tmp_path.name}_folder_summary.txt",
         "csv": f"{tmp_path.name}_folder_summary.csv",
         "json": f"{tmp_path.name}_folder_summary.json",
+        "html": f"{tmp_path.name}_folder_summary.html",
     }
 
 
@@ -649,6 +652,41 @@ def test_format_and_save_folder_text_report_include_summary_and_detail_sections(
     assert output_path.read_text(encoding="utf-8") == report
 
 
+def test_format_and_save_folder_html_report_include_summary_error_and_details_sections(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "valid.docx")
+    (tmp_path / "broken.docx").write_bytes(b"NOT-A-ZIP")
+    folder_results = analyze_office_folder(str(tmp_path))
+    report = format_folder_html_report(folder_results)
+    output_path = tmp_path / "folder.html"
+
+    save_folder_html_report(report, str(output_path))
+
+    assert "<!DOCTYPE html>" in report
+    assert "OFFICE FOLDER FORENSIC SUMMARY" in report
+    assert "TABELLA RIEPILOGATIVA" in report
+    assert "<th>Nome file</th>" in report
+    assert "<th>Famiglia Office</th>" in report
+    assert "<th>Risk score</th>" in report
+    assert "ERRORI DI ANALISI" in report
+    assert "DETTAGLIO REPORT PER SINGOLO FILE" in report
+    assert "<details" in report
+    assert "<summary>" in report
+    assert "supporto tecnico di triage documentale" in report
+    assert output_path.read_text(encoding="utf-8") == report
+
+
+def test_format_folder_html_report_without_errors_omits_error_section(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "valid.docx")
+
+    folder_results = analyze_office_folder(str(tmp_path))
+    report = format_folder_html_report(folder_results)
+
+    assert "OFFICE FOLDER FORENSIC SUMMARY" in report
+    assert "ERRORI DI ANALISI" not in report
+    assert "<table>" in report
+    assert "<details" in report
+
+
 def test_cli_file_path_behavior_remains_unchanged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     sample_path = build_synthetic_ooxml_package(tmp_path / "single.docx")
 
@@ -686,10 +724,13 @@ def test_cli_folder_path_generates_txt_csv_and_json_reports(
     assert f"Report TXT salvato in: {report_paths['txt']}" in captured.out
     assert f"Report CSV salvato in: {report_paths['csv']}" in captured.out
     assert f"Report JSON salvato in: {report_paths['json']}" in captured.out
+    assert f"Report HTML salvato in: {report_paths['html']}" in captured.out
     assert Path(report_paths["txt"]).exists()
     assert Path(report_paths["csv"]).exists()
     assert Path(report_paths["json"]).exists()
+    assert Path(report_paths["html"]).exists()
 
     Path(report_paths["txt"]).unlink()
     Path(report_paths["csv"]).unlink()
     Path(report_paths["json"]).unlink()
+    Path(report_paths["html"]).unlink()
