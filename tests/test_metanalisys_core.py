@@ -1,3 +1,4 @@
+import csv
 import hashlib
 import json
 import os
@@ -7,14 +8,22 @@ from pathlib import Path
 
 import pytest
 
+import metanalisys
+
 from metanalisys_core import FileAccessError
 from metanalisys_core import UnsupportedFormatError
 from metanalisys_core import analyze_office_file
+from metanalisys_core import analyze_office_folder
+from metanalisys_core import build_folder_report_paths
 from metanalisys_core import compute_file_hashes
 from metanalisys_core import ensure_readable_file
+from metanalisys_core import format_folder_text_report
 from metanalisys_core import format_risk_level
 from metanalisys_core import format_text_report
 from metanalisys_core import get_format_spec
+from metanalisys_core import save_folder_csv_report
+from metanalisys_core import save_folder_json_report
+from metanalisys_core import save_folder_text_report
 from metanalisys_core import save_json_report
 
 
@@ -459,3 +468,228 @@ def test_temporal_checks_ignore_unparseable_metadata_values(tmp_path: Path, modi
         or "Scostamento significativo tra data modifica OOXML e data modifica filesystem" in item["indicator"]
         for item in results["suspicious_indicators"]
     )
+
+
+def test_analyze_office_folder_empty_directory(tmp_path: Path) -> None:
+    folder_results = analyze_office_folder(str(tmp_path))
+
+    assert folder_results["folder_path"] == str(tmp_path.resolve())
+    assert folder_results["total_files"] == 0
+    assert folder_results["status_counts"] == {"OK": 0, "LIMITED": 0, "ERROR": 0}
+    assert folder_results["rows"] == []
+    assert folder_results["reports"] == []
+
+
+def test_analyze_office_folder_orders_files_case_insensitively_and_ignores_subfolders(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "zeta.docx")
+    build_synthetic_ooxml_package(tmp_path / "Alpha.docx")
+    build_synthetic_ooxml_package(tmp_path / "beta.docx")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    build_synthetic_ooxml_package(nested / "inside.docx")
+    (tmp_path / "notes.txt").write_text("ignore", encoding="utf-8")
+
+    folder_results = analyze_office_folder(str(tmp_path))
+
+    assert [row["filename"] for row in folder_results["rows"]] == [
+        "Alpha.docx",
+        "beta.docx",
+        "zeta.docx",
+    ]
+    assert folder_results["total_files"] == 3
+
+
+def test_analyze_office_folder_summary_row_contains_metadata_and_format_details(tmp_path: Path) -> None:
+    sample_path = build_synthetic_ooxml_package(
+        tmp_path / "summary.docx",
+        core_xml=build_core_xml(
+            author="Analyst A",
+            last_modified_by="Reviewer B",
+            created="2026-05-15T10:00:00Z",
+            modified="2026-05-16T11:30:00Z",
+        ),
+    )
+
+    folder_results = analyze_office_folder(str(tmp_path))
+    row = folder_results["rows"][0]
+
+    assert row["filename"] == "summary.docx"
+    assert row["path"] == str(sample_path.resolve())
+    assert row["office_family"] == "Word"
+    assert row["format_extension"] == ".docx"
+    assert row["creator"] == "Analyst A"
+    assert row["created"] == "2026-05-15T10:00:00Z"
+    assert row["last_modified_by"] == "Reviewer B"
+    assert row["modified"] == "2026-05-16T11:30:00Z"
+
+
+def test_analyze_office_folder_ok_status_includes_risk_score_and_level(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(
+        tmp_path / "risk.docx",
+        core_xml=build_core_xml(author="A", last_modified_by="B"),
+    )
+
+    folder_results = analyze_office_folder(str(tmp_path))
+    row = folder_results["rows"][0]
+
+    assert row["risk_score"] == 10
+    assert row["risk_level"] == "BASSO"
+    assert row["status"] == "OK"
+    assert folder_results["status_counts"]["OK"] == 1
+
+
+def test_analyze_office_folder_legacy_format_uses_limited_status(tmp_path: Path) -> None:
+    legacy_path = tmp_path / "legacy.xls"
+    legacy_path.write_bytes(b"SYNTHETIC-LEGACY")
+
+    folder_results = analyze_office_folder(str(tmp_path))
+    row = folder_results["rows"][0]
+
+    assert row["filename"] == "legacy.xls"
+    assert row["office_family"] == "Excel"
+    assert row["format_extension"] == ".xls"
+    assert row["creator"] == "N/D"
+    assert row["status"] == "LIMITED"
+    assert folder_results["status_counts"]["LIMITED"] == 1
+
+
+def test_analyze_office_folder_corrupted_office_file_uses_error_status(tmp_path: Path) -> None:
+    broken_path = tmp_path / "broken.docx"
+    broken_path.write_bytes(b"NOT-A-ZIP")
+
+    folder_results = analyze_office_folder(str(tmp_path))
+    row = folder_results["rows"][0]
+    report = folder_results["reports"][0]
+
+    assert row["filename"] == "broken.docx"
+    assert row["office_family"] == "N/D"
+    assert row["format_extension"] == ".docx"
+    assert row["risk_score"] is None
+    assert row["risk_level"] == "N/D"
+    assert row["status"] == "ERROR"
+    assert "ZIP valido" in row["error"]
+    assert report["status"] == "ERROR"
+    assert report["filename"] == "broken.docx"
+
+
+def test_build_folder_report_paths_uses_folder_name(tmp_path: Path) -> None:
+    report_paths = build_folder_report_paths(str(tmp_path))
+
+    assert report_paths == {
+        "txt": f"{tmp_path.name}_folder_summary.txt",
+        "csv": f"{tmp_path.name}_folder_summary.csv",
+        "json": f"{tmp_path.name}_folder_summary.json",
+    }
+
+
+def test_save_folder_csv_report_writes_expected_headers(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "sample.docx")
+    folder_results = analyze_office_folder(str(tmp_path))
+    output_path = tmp_path / "folder.csv"
+
+    save_folder_csv_report(folder_results, str(output_path))
+
+    with output_path.open("r", encoding="utf-8-sig", newline="") as file_handle:
+        reader = csv.DictReader(file_handle)
+        assert reader.fieldnames == [
+            "filename",
+            "path",
+            "office_family",
+            "format_extension",
+            "creator",
+            "created",
+            "last_modified_by",
+            "modified",
+            "risk_score",
+            "risk_level",
+            "status",
+            "error",
+        ]
+        rows = list(reader)
+
+    assert rows[0]["filename"] == "sample.docx"
+
+
+def test_save_folder_json_report_writes_expected_structure(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "valid.docx")
+    (tmp_path / "broken.docx").write_bytes(b"NOT-A-ZIP")
+    folder_results = analyze_office_folder(str(tmp_path))
+    output_path = tmp_path / "folder.json"
+
+    save_folder_json_report(folder_results, str(output_path))
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["folder_path"] == str(tmp_path.resolve())
+    assert payload["total_files"] == 2
+    assert payload["status_counts"] == {"OK": 1, "LIMITED": 0, "ERROR": 1}
+    assert len(payload["rows"]) == 2
+    assert len(payload["reports"]) == 2
+    valid_report = next(report for report in payload["reports"] if report.get("file_info"))
+    error_report = next(report for report in payload["reports"] if report.get("status") == "ERROR")
+    assert valid_report["file_info"]["filename"] == "valid.docx"
+    assert error_report["filename"] == "broken.docx"
+
+
+def test_format_and_save_folder_text_report_include_summary_and_detail_sections(tmp_path: Path) -> None:
+    build_synthetic_ooxml_package(tmp_path / "valid.docx")
+    (tmp_path / "broken.docx").write_bytes(b"NOT-A-ZIP")
+    folder_results = analyze_office_folder(str(tmp_path))
+    report = format_folder_text_report(folder_results)
+    output_path = tmp_path / "folder.txt"
+
+    save_folder_text_report(folder_results, str(output_path))
+
+    assert "OFFICE FOLDER FORENSIC SUMMARY" in report
+    assert "[TABELLA RIEPILOGATIVA]" in report
+    assert "[ERRORI DI ANALISI]" in report
+    assert "[DETTAGLIO REPORT PER SINGOLO FILE]" in report
+    assert "OFFICE FORENSIC ANALYSIS REPORT" in report
+    assert "broken.docx" in report
+    assert "triage documentale" in report
+    assert output_path.read_text(encoding="utf-8") == report
+
+
+def test_cli_file_path_behavior_remains_unchanged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    sample_path = build_synthetic_ooxml_package(tmp_path / "single.docx")
+
+    monkeypatch.setattr(metanalisys.sys, "argv", ["metanalisys.py", str(sample_path)])
+    monkeypatch.setattr("builtins.input", lambda prompt="": "1")
+
+    exit_code = metanalisys.main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "OFFICE FORENSIC ANALYSIS REPORT" in captured.out
+    assert "Report JSON salvato in: single_forensic_report.json" in captured.out
+    assert not (tmp_path / "single_forensic_report.txt").exists()
+    assert Path("single_forensic_report.json").exists()
+    Path("single_forensic_report.json").unlink()
+
+
+def test_cli_folder_path_generates_txt_csv_and_json_reports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    build_synthetic_ooxml_package(tmp_path / "valid.docx")
+    (tmp_path / "legacy.doc").write_bytes(b"SYNTHETIC-LEGACY")
+
+    monkeypatch.setattr(metanalisys.sys, "argv", ["metanalisys.py", str(tmp_path)])
+    monkeypatch.setattr("builtins.input", lambda prompt="": "1")
+
+    exit_code = metanalisys.main()
+    captured = capsys.readouterr()
+    report_paths = build_folder_report_paths(str(tmp_path))
+
+    assert exit_code == 0
+    assert "OFFICE FOLDER FORENSIC SUMMARY" in captured.out
+    assert f"Report TXT salvato in: {report_paths['txt']}" in captured.out
+    assert f"Report CSV salvato in: {report_paths['csv']}" in captured.out
+    assert f"Report JSON salvato in: {report_paths['json']}" in captured.out
+    assert Path(report_paths["txt"]).exists()
+    assert Path(report_paths["csv"]).exists()
+    assert Path(report_paths["json"]).exists()
+
+    Path(report_paths["txt"]).unlink()
+    Path(report_paths["csv"]).unlink()
+    Path(report_paths["json"]).unlink()

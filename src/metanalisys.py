@@ -1,12 +1,19 @@
 import sys
+from pathlib import Path
 
 from metanalisys_core import OFFICE_FORMATS
 from metanalisys_core import FileAccessError
 from metanalisys_core import InvalidOfficeFileError
 from metanalisys_core import UnsupportedFormatError
 from metanalisys_core import analyze_office_file
+from metanalisys_core import analyze_office_folder
+from metanalisys_core import build_folder_report_paths
 from metanalisys_core import build_report_paths
+from metanalisys_core import format_folder_text_report
 from metanalisys_core import format_text_report
+from metanalisys_core import save_folder_csv_report
+from metanalisys_core import save_folder_json_report
+from metanalisys_core import save_folder_text_report
 from metanalisys_core import save_json_report
 from metanalisys_core import save_text_report
 
@@ -27,7 +34,7 @@ def choose_output_mode() -> str:
 def choose_file_path() -> str:
     if len(sys.argv) > 1:
         return sys.argv[1]
-    return input("\nInserisci il percorso completo del file Office:\n> ").strip().strip('"')
+    return input("\nInserisci il percorso completo del file o della cartella Office:\n> ").strip().strip('"')
 
 
 def print_supported_formats() -> None:
@@ -38,11 +45,28 @@ def print_supported_formats() -> None:
 
 def main() -> int:
     output_mode = choose_output_mode()
-    office_file = choose_file_path()
+    office_target = choose_file_path()
     try:
-        results = analyze_office_file(office_file)
+        if Path(office_target).is_dir():
+            folder_results = analyze_office_folder(office_target)
+            report_text = format_folder_text_report(folder_results)
+            report_paths = build_folder_report_paths(folder_results["folder_path"])
+
+            if output_mode == "1":
+                print("\n")
+                print(report_text)
+
+            save_folder_text_report(folder_results, report_paths["txt"])
+            save_folder_csv_report(folder_results, report_paths["csv"])
+            save_folder_json_report(folder_results, report_paths["json"])
+            print(f"\nReport TXT salvato in: {report_paths['txt']}")
+            print(f"Report CSV salvato in: {report_paths['csv']}")
+            print(f"Report JSON salvato in: {report_paths['json']}")
+            return 0
+
+        results = analyze_office_file(office_target)
         report_text = format_text_report(results)
-        report_paths = build_report_paths(office_file)
+        report_paths = build_report_paths(office_target)
 
         if output_mode == "1":
             print("\n")
