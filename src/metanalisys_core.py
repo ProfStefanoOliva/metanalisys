@@ -4,6 +4,7 @@ import os
 import re
 import textwrap
 import zipfile
+import csv
 
 from dataclasses import dataclass
 from datetime import UTC
@@ -91,6 +92,20 @@ NON_MACRO_ENABLED_EXTENSIONS = {
 }
 
 FILESYSTEM_OOXML_MODIFIED_DELTA_DAYS = 365
+FOLDER_SUMMARY_CSV_FIELDS = [
+    "filename",
+    "path",
+    "office_family",
+    "format_extension",
+    "creator",
+    "created",
+    "last_modified_by",
+    "modified",
+    "risk_score",
+    "risk_level",
+    "status",
+    "error",
+]
 
 
 @dataclass(frozen=True)
@@ -215,6 +230,25 @@ def ensure_readable_file(filepath: str) -> str:
         raise FileAccessError("Permessi insufficienti per leggere il file.") from exc
     except OSError as exc:
         raise FileAccessError(f"Impossibile accedere al file: {exc}") from exc
+    return normalized_path
+
+
+def ensure_existing_folder(folder_path: str) -> str:
+    """Validate that a target path exists and is an accessible directory."""
+
+    if not folder_path or not isinstance(folder_path, str):
+        raise FileAccessError("Percorso cartella non valido.")
+    normalized_path = os.path.abspath(folder_path)
+    if not os.path.exists(normalized_path):
+        raise FileAccessError("La cartella specificata non esiste.")
+    if not os.path.isdir(normalized_path):
+        raise FileAccessError("Il percorso specificato non è una cartella.")
+    try:
+        os.listdir(normalized_path)
+    except PermissionError as exc:
+        raise FileAccessError("Permessi insufficienti per leggere la cartella.") from exc
+    except OSError as exc:
+        raise FileAccessError(f"Impossibile accedere alla cartella: {exc}") from exc
     return normalized_path
 
 
@@ -557,6 +591,123 @@ def format_risk_level(score: int) -> str:
     return "CRITICO"
 
 
+def _folder_status_from_results(results: dict[str, Any]) -> str:
+    metadata_support = results.get("format", {}).get("metadata_support")
+    if metadata_support == "limited":
+        return "LIMITED"
+    return "OK"
+
+
+def _safe_summary_value(value: Any) -> Any:
+    if value in (None, ""):
+        return "N/D"
+    return value
+
+
+def _build_folder_summary_row(filepath: str, results: dict[str, Any]) -> dict[str, Any]:
+    metadata = results.get("metadata", {})
+    score = results.get("risk_score")
+    return {
+        "filename": os.path.basename(filepath),
+        "path": filepath,
+        "office_family": _safe_summary_value(results.get("format", {}).get("family")),
+        "format_extension": _safe_summary_value(results.get("format", {}).get("extension")),
+        "creator": _safe_summary_value(metadata.get("author")),
+        "created": _safe_summary_value(metadata.get("created")),
+        "last_modified_by": _safe_summary_value(metadata.get("last_modified_by")),
+        "modified": _safe_summary_value(metadata.get("modified")),
+        "risk_score": score,
+        "risk_level": format_risk_level(score) if isinstance(score, int) else "N/D",
+        "status": _folder_status_from_results(results),
+        "error": "",
+    }
+
+
+def _build_folder_error_row(filepath: str, error_message: str) -> dict[str, Any]:
+    extension = os.path.splitext(filepath)[1].lower() or "N/D"
+    return {
+        "filename": os.path.basename(filepath),
+        "path": filepath,
+        "office_family": "N/D",
+        "format_extension": extension,
+        "creator": "N/D",
+        "created": "N/D",
+        "last_modified_by": "N/D",
+        "modified": "N/D",
+        "risk_score": None,
+        "risk_level": "N/D",
+        "status": "ERROR",
+        "error": error_message,
+    }
+
+
+def _build_folder_status_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"OK": 0, "LIMITED": 0, "ERROR": 0}
+    for row in rows:
+        status = row.get("status")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def _iter_supported_folder_files(folder_path: str) -> list[str]:
+    supported_files: list[str] = []
+    for entry in os.listdir(folder_path):
+        candidate_path = os.path.join(folder_path, entry)
+        if not os.path.isfile(candidate_path):
+            continue
+        extension = os.path.splitext(entry)[1].lower()
+        if extension in OFFICE_FORMATS:
+            supported_files.append(os.path.abspath(candidate_path))
+    return sorted(supported_files, key=lambda path: os.path.basename(path).lower())
+
+
+def analyze_office_folder(folder_path: str) -> dict[str, Any]:
+    """Analyze supported Office files in a folder without recursing subfolders."""
+
+    normalized_folder = ensure_existing_folder(folder_path)
+    office_files = _iter_supported_folder_files(normalized_folder)
+    rows: list[dict[str, Any]] = []
+    reports: list[dict[str, Any]] = []
+
+    for filepath in office_files:
+        try:
+            results = analyze_office_file(filepath)
+        except Exception as exc:
+            error_message = str(exc).strip() or type(exc).__name__
+            rows.append(_build_folder_error_row(filepath, error_message))
+            reports.append(
+                {
+                    "filename": os.path.basename(filepath),
+                    "path": filepath,
+                    "status": "ERROR",
+                    "error": error_message,
+                }
+            )
+            continue
+
+        row = _build_folder_summary_row(filepath, results)
+        rows.append(row)
+        reports.append(
+            {
+                "filename": os.path.basename(filepath),
+                "path": filepath,
+                "status": row["status"],
+                "error": "",
+                "results": results,
+            }
+        )
+
+    return {
+        "folder_path": normalized_folder,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "total_files": len(office_files),
+        "status_counts": _build_folder_status_counts(rows),
+        "rows": rows,
+        "reports": reports,
+    }
+
+
 def _append_key_values(lines: list[str], section_name: str, values: dict[str, Any]) -> None:
     lines.append(f"\n[{section_name}]\n")
     if not values:
@@ -704,11 +855,102 @@ def format_text_report(results: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_folder_summary_table(rows: list[dict[str, Any]]) -> list[str]:
+    columns = [
+        ("Nome file", "filename", 24),
+        ("Famiglia Office", "office_family", 16),
+        ("Creatore", "creator", 20),
+        ("Data creazione", "created", 20),
+        ("Ultimo modificatore", "last_modified_by", 20),
+        ("Data ultima modifica", "modified", 20),
+        ("Risk score", "risk_score", 10),
+        ("Livello", "risk_level", 8),
+        ("Status", "status", 8),
+    ]
+    header = " | ".join(f"{title:<{width}}" for title, _, width in columns)
+    separator = "-+-".join("-" * width for _, _, width in columns)
+    lines = [header, separator]
+    for row in rows:
+        values = []
+        for _, key, width in columns:
+            value = row.get(key)
+            if value is None:
+                value = "N/D"
+            values.append(f"{str(value):<{width}}")
+        lines.append(" | ".join(values))
+    return lines
+
+
+def format_folder_text_report(folder_results: dict[str, Any]) -> str:
+    """Render a cumulative plain-text report for a folder analysis."""
+
+    rows = folder_results.get("rows", [])
+    status_counts = folder_results.get("status_counts", {})
+    reports = folder_results.get("reports", [])
+    lines = [
+        "=" * 70,
+        "OFFICE FOLDER FORENSIC SUMMARY",
+        "=" * 70,
+        f"Cartella analizzata: {folder_results.get('folder_path', 'N/D')}",
+        f"File Office trovati: {folder_results.get('total_files', 0)}",
+        f"File con status OK: {status_counts.get('OK', 0)}",
+        f"File con status LIMITED: {status_counts.get('LIMITED', 0)}",
+        f"File con status ERROR: {status_counts.get('ERROR', 0)}",
+        "",
+        "[TABELLA RIEPILOGATIVA]",
+        "",
+    ]
+
+    if rows:
+        lines.extend(_format_folder_summary_table(rows))
+    else:
+        lines.append("Nessun file Office supportato trovato nella cartella indicata.")
+
+    error_reports = [report for report in reports if report.get("status") == "ERROR"]
+    if error_reports:
+        lines.extend(["", "[ERRORI DI ANALISI]", ""])
+        for report in error_reports:
+            lines.append(f"- {report.get('filename', 'N/D')}: {report.get('error', 'N/D')}")
+
+    lines.extend(["", "[DETTAGLIO REPORT PER SINGOLO FILE]", ""])
+    if not reports:
+        lines.append("Nessun file Office supportato da dettagliare.")
+    else:
+        for report in reports:
+            lines.append("-" * 70)
+            if report.get("status") == "ERROR":
+                lines.append(f"Nome file: {report.get('filename', 'N/D')}")
+                lines.append(f"Percorso: {report.get('path', 'N/D')}")
+                lines.append(f"Status: {report.get('status', 'N/D')}")
+                lines.append(f"Errore: {report.get('error', 'N/D')}")
+            else:
+                lines.append(format_text_report(report.get("results", {})))
+
+    lines.extend(
+        [
+            "",
+            "[FORENSIC NOTICE]",
+            "",
+            "Il report di cartella è un supporto tecnico di triage documentale e non costituisce valutazione probatoria.",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def build_report_paths(filepath: str) -> dict[str, str]:
     base_name = os.path.splitext(os.path.basename(filepath))[0]
     return {
         "txt": f"{base_name}_forensic_report.txt",
         "json": f"{base_name}_forensic_report.json",
+    }
+
+
+def build_folder_report_paths(folder_path: str) -> dict[str, str]:
+    folder_name = os.path.basename(os.path.normpath(folder_path))
+    return {
+        "txt": f"{folder_name}_folder_summary.txt",
+        "csv": f"{folder_name}_folder_summary.csv",
+        "json": f"{folder_name}_folder_summary.json",
     }
 
 
@@ -744,3 +986,42 @@ def save_json_report(results: dict[str, Any], destination: str) -> None:
 
     with open(destination, "w", encoding="utf-8") as file_handle:
         json.dump(results, file_handle, indent=4, ensure_ascii=False)
+
+
+def save_folder_text_report(folder_results: dict[str, Any], destination: str) -> None:
+    save_text_report(format_folder_text_report(folder_results), destination)
+
+
+def save_folder_csv_report(folder_results: dict[str, Any], destination: str) -> None:
+    with open(destination, "w", encoding="utf-8-sig", newline="") as file_handle:
+        writer = csv.DictWriter(file_handle, fieldnames=FOLDER_SUMMARY_CSV_FIELDS)
+        writer.writeheader()
+        for row in folder_results.get("rows", []):
+            writer.writerow({field: row.get(field) for field in FOLDER_SUMMARY_CSV_FIELDS})
+
+
+def save_folder_json_report(folder_results: dict[str, Any], destination: str) -> None:
+    json_payload = {
+        "folder_path": folder_results.get("folder_path"),
+        "generated_at": folder_results.get("generated_at"),
+        "total_files": folder_results.get("total_files", 0),
+        "status_counts": folder_results.get("status_counts", {}),
+        "rows": folder_results.get("rows", []),
+        "reports": [],
+    }
+
+    for report in folder_results.get("reports", []):
+        if report.get("status") == "ERROR":
+            json_payload["reports"].append(
+                {
+                    "filename": report.get("filename"),
+                    "path": report.get("path"),
+                    "status": report.get("status"),
+                    "error": report.get("error"),
+                }
+            )
+        else:
+            json_payload["reports"].append(report.get("results", {}))
+
+    with open(destination, "w", encoding="utf-8") as file_handle:
+        json.dump(json_payload, file_handle, indent=4, ensure_ascii=False)
