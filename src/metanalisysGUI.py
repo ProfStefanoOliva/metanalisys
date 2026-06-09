@@ -17,7 +17,15 @@ from metanalisys_core import FileAccessError
 from metanalisys_core import InvalidOfficeFileError
 from metanalisys_core import UnsupportedFormatError
 from metanalisys_core import analyze_office_file
+from metanalisys_core import analyze_office_folder
+from metanalisys_core import build_folder_report_paths
+from metanalisys_core import format_folder_html_report
+from metanalisys_core import format_folder_text_report
 from metanalisys_core import format_text_report
+from metanalisys_core import save_folder_csv_report
+from metanalisys_core import save_folder_html_report
+from metanalisys_core import save_folder_json_report
+from metanalisys_core import save_folder_text_report
 from metanalisys_core import save_text_report
 
 # ============================================================
@@ -29,6 +37,38 @@ ctk.set_default_color_theme("blue")
 
 ICON_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "metanalisys_icon.ico"
 WATERMARK_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "metanalisys_icon.png"
+
+
+def resolve_analysis_target(path_text: str) -> str:
+    normalized = path_text.strip()
+    if not normalized:
+        raise FileAccessError("Selezionare un file o una cartella.")
+    if not os.path.exists(normalized):
+        raise FileAccessError("Il percorso specificato non esiste.")
+    if os.path.isfile(normalized):
+        return "file"
+    if os.path.isdir(normalized):
+        return "folder"
+    raise FileAccessError("Il percorso specificato non è né un file né una cartella.")
+
+
+def build_destination_report_paths(source_folder_path: str, destination_dir: str) -> dict[str, str]:
+    report_paths = build_folder_report_paths(source_folder_path)
+    return {
+        key: os.path.join(destination_dir, os.path.basename(path))
+        for key, path in report_paths.items()
+    }
+
+
+def get_about_text() -> str:
+    return (
+        "metanalisys\n\n"
+        "Analisi preliminare dei metadati Office.\n"
+        "Software alpha di supporto tecnico.\n"
+        "Supporto analisi cartella con report TXT/CSV/JSON/HTML.\n\n"
+        "Copyright © 2026 Stefano Oliva\n"
+        "Licenza: GNU General Public License v3.0"
+    )
 
 # ============================================================
 # GUI
@@ -50,7 +90,10 @@ class App(ctk.CTk):
         self._set_window_icon()
 
         self.selected_file = None
+        self.selected_path = None
+        self.current_analysis_type = None
         self.report_text = ""
+        self.report_html = ""
         self.report_results = None
         self.watermark_label = None
         self.watermark_image = None
@@ -104,6 +147,25 @@ class App(ctk.CTk):
         )
 
         open_button.pack(
+            side="left",
+            padx=5,
+            pady=10
+        )
+
+        # ====================================================
+        # APRI CARTELLA
+        # ====================================================
+
+        open_folder_button = ctk.CTkButton(
+            top_frame,
+            text="Apri Cartella",
+            width=150,
+            height=40,
+            font=("Segoe UI", 14, "bold"),
+            command=self.open_folder
+        )
+
+        open_folder_button.pack(
             side="left",
             padx=5,
             pady=10
@@ -294,6 +356,8 @@ class App(ctk.CTk):
             return
 
         self.selected_file = file
+        self.selected_path = file
+        self.current_analysis_type = None
 
         self.path_entry.delete(0, "end")
         self.path_entry.insert(0, file)
@@ -302,32 +366,60 @@ class App(ctk.CTk):
             text="File selezionato."
         )
 
+    def open_folder(self):
+
+        folder = filedialog.askdirectory(
+            title="Seleziona cartella contenente file Office"
+        )
+
+        if not folder:
+            return
+
+        self.selected_path = folder
+        self.selected_file = None
+        self.current_analysis_type = None
+
+        self.path_entry.delete(0, "end")
+        self.path_entry.insert(0, folder)
+
+        self.status.configure(
+            text="Cartella selezionata."
+        )
+
     # ========================================================
     # ANALYZE
     # ========================================================
 
     def analyze(self):
-        selected_file = self.path_entry.get().strip()
-
-        if not selected_file:
-
-            messagebox.showerror(
-                "Errore",
-                "Selezionare un file."
-            )
-
-            return
+        selected_path = self.path_entry.get().strip()
 
         try:
+            target_type = resolve_analysis_target(selected_path)
 
             self.status.configure(
                 text="Analisi in corso..."
             )
 
             self.update()
-            self.selected_file = selected_file
-            self.report_results = analyze_office_file(self.selected_file)
-            self.report_text = format_text_report(self.report_results)
+            self.selected_path = selected_path
+            self.current_analysis_type = target_type
+            self.report_html = ""
+
+            if target_type == "file":
+                self.selected_file = selected_path
+                self.report_results = analyze_office_file(selected_path)
+                self.report_text = format_text_report(self.report_results)
+                self.status.configure(
+                    text="Analisi completata."
+                )
+            else:
+                self.selected_file = None
+                self.report_results = analyze_office_folder(selected_path)
+                self.report_text = format_folder_text_report(self.report_results)
+                self.report_html = format_folder_html_report(self.report_results)
+                self.status.configure(
+                    text="Analisi cartella completata."
+                )
 
             self.textbox.delete(
                 "1.0",
@@ -339,10 +431,6 @@ class App(ctk.CTk):
                 self.report_text
             )
             self._update_report_watermark()
-
-            self.status.configure(
-                text="Analisi completata."
-            )
 
         except UnsupportedFormatError:
 
@@ -391,6 +479,35 @@ class App(ctk.CTk):
             )
 
             return
+        if self.current_analysis_type == "folder":
+            destination_dir = filedialog.askdirectory(
+                title="Seleziona cartella di destinazione per i report"
+            )
+
+            if not destination_dir:
+                return
+
+            report_paths = build_destination_report_paths(self.selected_path, destination_dir)
+            save_folder_text_report(self.report_results, report_paths["txt"])
+            save_folder_csv_report(self.report_results, report_paths["csv"])
+            save_folder_json_report(self.report_results, report_paths["json"])
+            save_folder_html_report(self.report_html, report_paths["html"])
+
+            self.status.configure(
+                text="Report cartella salvati."
+            )
+
+            messagebox.showinfo(
+                "Completato",
+                (
+                    "Report dell'analisi riepilogativa di cartella salvati correttamente:\n"
+                    f"- {os.path.basename(report_paths['txt'])}\n"
+                    f"- {os.path.basename(report_paths['csv'])}\n"
+                    f"- {os.path.basename(report_paths['json'])}\n"
+                    f"- {os.path.basename(report_paths['html'])}"
+                )
+            )
+            return
 
         original = os.path.splitext(
             os.path.basename(self.selected_file)
@@ -430,13 +547,7 @@ class App(ctk.CTk):
 
         messagebox.showinfo(
             "Informazioni Software",
-            (
-                "metanalisys\n\n"
-                "Analisi preliminare dei metadati Office.\n"
-                "Software alpha di supporto tecnico.\n\n"
-                "Copyright © 2026 Stefano Oliva\n"
-                "Licenza: GNU General Public License v3.0"
-            )
+            get_about_text()
         )
 
 # ============================================================
