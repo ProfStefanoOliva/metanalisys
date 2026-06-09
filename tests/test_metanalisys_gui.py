@@ -98,6 +98,7 @@ def test_build_folder_summary_table_rows_prepares_expected_display_values() -> N
                 "filename": "sample.docx",
                 "office_family": "Word",
                 "creator": None,
+                "last_modified_by": "Reviewer B",
                 "created": "",
                 "modified": "2026-06-09T10:30:00Z",
                 "risk_score": 15,
@@ -112,6 +113,7 @@ def test_build_folder_summary_table_rows_prepares_expected_display_values() -> N
             "filename": "sample.docx",
             "office_family": "Word",
             "creator": "N/D",
+            "last_modified_by": "Reviewer B",
             "created": "N/D",
             "modified": "2026-06-09T10:30:00Z",
             "risk_score": "15",
@@ -126,9 +128,30 @@ def test_folder_summary_table_columns_match_expected_labels() -> None:
         ("filename", "File", 280),
         ("office_family", "Famiglia Office", 130),
         ("creator", "Creatore", 170),
+        ("last_modified_by", "Ultima modifica di", 170),
         ("created", "Creato", 170),
         ("modified", "Ultima modifica", 170),
         ("risk_score", "Risk score", 90),
         ("risk_level", "Livello", 100),
         ("status", "Stato", 100),
     ]
+
+
+def test_build_folder_summary_table_rows_normalizes_missing_last_modified_by() -> None:
+    folder_results = {
+        "rows": [
+            {
+                "filename": "sample.docx",
+                "office_family": "Word",
+                "creator": "Author A",
+                "last_modified_by": None,
+                "created": "2026-06-08T09:00:00Z",
+                "modified": "2026-06-09T10:30:00Z",
+                "risk_score": 0,
+                "risk_level": "BASSO",
+                "status": "OK",
+            }
+        ]
+    }
+
+    assert build_folder_summary_table_rows(folder_results)[0]["last_modified_by"] == "N/D"
