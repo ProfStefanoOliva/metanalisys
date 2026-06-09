@@ -8,10 +8,12 @@ from metanalisys_core import UnsupportedFormatError
 from metanalisys_core import analyze_office_file
 from metanalisys_core import analyze_office_folder
 from metanalisys_core import build_folder_report_paths
+from metanalisys_core import format_folder_html_report
 from metanalisys_core import build_report_paths
 from metanalisys_core import format_folder_text_report
 from metanalisys_core import format_text_report
 from metanalisys_core import save_folder_csv_report
+from metanalisys_core import save_folder_html_report
 from metanalisys_core import save_folder_json_report
 from metanalisys_core import save_folder_text_report
 from metanalisys_core import save_json_report
@@ -50,6 +52,7 @@ def main() -> int:
         if Path(office_target).is_dir():
             folder_results = analyze_office_folder(office_target)
             report_text = format_folder_text_report(folder_results)
+            report_html = format_folder_html_report(folder_results)
             report_paths = build_folder_report_paths(folder_results["folder_path"])
 
             if output_mode == "1":
@@ -59,9 +62,11 @@ def main() -> int:
             save_folder_text_report(folder_results, report_paths["txt"])
             save_folder_csv_report(folder_results, report_paths["csv"])
             save_folder_json_report(folder_results, report_paths["json"])
+            save_folder_html_report(report_html, report_paths["html"])
             print(f"\nReport TXT salvato in: {report_paths['txt']}")
             print(f"Report CSV salvato in: {report_paths['csv']}")
             print(f"Report JSON salvato in: {report_paths['json']}")
+            print(f"Report HTML salvato in: {report_paths['html']}")
             return 0
 
         results = analyze_office_file(office_target)

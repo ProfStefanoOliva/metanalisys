@@ -44,3 +44,12 @@ forensic_images/
 # Generated forensic reports
 *_forensic_report.json
 *_forensic_report.txt
+
+# Local manual test data and generated folder reports
+manual_test_folder/*
+!manual_test_folder/README.md
+*_folder_summary.txt
+*_folder_summary.csv
+*_folder_summary.json
+*_folder_summary.html
+.tmp_pycompile/

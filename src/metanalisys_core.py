@@ -5,6 +5,7 @@ import re
 import textwrap
 import zipfile
 import csv
+import html
 
 from dataclasses import dataclass
 from datetime import UTC
@@ -881,6 +882,17 @@ def _format_folder_summary_table(rows: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _html_escape(value: Any) -> str:
+    if value is None:
+        return "N/D"
+    return html.escape(str(value))
+
+
+def _html_badge_class(prefix: str, value: str) -> str:
+    normalized = str(value).strip().lower().replace(" ", "-").replace("/", "-")
+    return f"{prefix}-{normalized}"
+
+
 def format_folder_text_report(folder_results: dict[str, Any]) -> str:
     """Render a cumulative plain-text report for a folder analysis."""
 
@@ -937,6 +949,405 @@ def format_folder_text_report(folder_results: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_folder_html_report(folder_results: dict[str, Any]) -> str:
+    """Render a standalone HTML report for a folder analysis."""
+
+    rows = folder_results.get("rows", [])
+    reports = folder_results.get("reports", [])
+    status_counts = folder_results.get("status_counts", {})
+    error_reports = [report for report in reports if report.get("status") == "ERROR"]
+
+    summary_cards = [
+        ("Totale file", folder_results.get("total_files", 0), "summary-card"),
+        ("OK", status_counts.get("OK", 0), "summary-card summary-ok"),
+        ("LIMITED", status_counts.get("LIMITED", 0), "summary-card summary-limited"),
+        ("ERROR", status_counts.get("ERROR", 0), "summary-card summary-error"),
+    ]
+    summary_cards_html = "\n".join(
+        [
+            (
+                f"<section class=\"{card_class}\">"
+                f"<div class=\"summary-label\">{_html_escape(label)}</div>"
+                f"<div class=\"summary-value\">{_html_escape(value)}</div>"
+                f"</section>"
+            )
+            for label, value, card_class in summary_cards
+        ]
+    )
+
+    table_rows_html = ""
+    for row in rows:
+        risk_level = _safe_summary_value(row.get("risk_level"))
+        status = _safe_summary_value(row.get("status"))
+        risk_score = row.get("risk_score")
+        table_rows_html += (
+            "<tr>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('filename')))}</td>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('office_family')))}</td>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('creator')))}</td>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('created')))}</td>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('last_modified_by')))}</td>"
+            f"<td>{_html_escape(_safe_summary_value(row.get('modified')))}</td>"
+            f"<td>{_html_escape(risk_score if risk_score is not None else 'N/D')}</td>"
+            f"<td><span class=\"badge risk-badge {_html_badge_class('risk', str(risk_level))}\">{_html_escape(risk_level)}</span></td>"
+            f"<td><span class=\"badge status-badge {_html_badge_class('status', str(status))}\">{_html_escape(status)}</span></td>"
+            "</tr>\n"
+        )
+
+    if not table_rows_html:
+        table_rows_html = (
+            "<tr><td colspan=\"9\" class=\"empty-row\">"
+            "Nessun file Office supportato trovato nella cartella indicata."
+            "</td></tr>"
+        )
+
+    error_section_html = ""
+    if error_reports:
+        error_rows = "\n".join(
+            [
+                (
+                    "<tr>"
+                    f"<td>{_html_escape(report.get('filename', 'N/D'))}</td>"
+                    f"<td>{_html_escape(report.get('error', 'N/D'))}</td>"
+                    "</tr>"
+                )
+                for report in error_reports
+            ]
+        )
+        error_section_html = f"""
+        <section class="panel">
+          <h2>ERRORI DI ANALISI</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome file</th>
+                  <th>Messaggio errore</th>
+                </tr>
+              </thead>
+              <tbody>
+                {error_rows}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        """
+
+    detail_items_html = ""
+    if reports:
+        for report in reports:
+            filename = _html_escape(report.get("filename", "N/D"))
+            status = _safe_summary_value(report.get("status"))
+            risk_level = "N/D"
+            detail_body = ""
+            if report.get("status") == "ERROR":
+                detail_body = (
+                    "<div class=\"error-card\">"
+                    f"<p><strong>Nome file:</strong> {filename}</p>"
+                    f"<p><strong>Percorso:</strong> {_html_escape(report.get('path', 'N/D'))}</p>"
+                    f"<p><strong>Errore:</strong> {_html_escape(report.get('error', 'N/D'))}</p>"
+                    "</div>"
+                )
+            else:
+                results = report.get("results", {})
+                risk_level = format_risk_level(results.get("risk_score", 0))
+                detail_body = (
+                    "<pre class=\"report-pre\">"
+                    f"{html.escape(format_text_report(results))}"
+                    "</pre>"
+                )
+            detail_items_html += f"""
+            <details class="detail-item">
+              <summary>
+                <span class="detail-name">{filename}</span>
+                <span class="detail-badges">
+                  <span class="badge risk-badge {_html_badge_class('risk', str(risk_level))}">{_html_escape(risk_level)}</span>
+                  <span class="badge status-badge {_html_badge_class('status', str(status))}">{_html_escape(status)}</span>
+                </span>
+              </summary>
+              <div class="detail-content">
+                {detail_body}
+              </div>
+            </details>
+            """
+    else:
+        detail_items_html = "<p class=\"empty-row\">Nessun file Office supportato da dettagliare.</p>"
+
+    return f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OFFICE FOLDER FORENSIC SUMMARY</title>
+  <style>
+    :root {{
+      color-scheme: dark;
+      --bg: #0f1720;
+      --panel: #182331;
+      --border: #2c4158;
+      --text: #e6edf4;
+      --muted: #aebdcb;
+      --accent: #1f6aa5;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(31, 106, 165, 0.18), transparent 30%),
+        linear-gradient(180deg, #0b1219 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }}
+    .container {{
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }}
+    .hero, .panel {{
+      background: linear-gradient(180deg, rgba(31, 45, 61, 0.95), rgba(24, 35, 49, 0.98));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }}
+    .hero {{
+      padding: 28px;
+      margin-bottom: 24px;
+    }}
+    h1, h2 {{
+      margin: 0 0 14px;
+      letter-spacing: 0.02em;
+    }}
+    h1 {{ font-size: 1.95rem; }}
+    h2 {{ font-size: 1.15rem; }}
+    .meta {{
+      color: var(--muted);
+      margin: 8px 0;
+    }}
+    .notice {{
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--accent);
+      background: rgba(31, 106, 165, 0.12);
+      border-radius: var(--radius-sm);
+    }}
+    .summary-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }}
+    .summary-card {{
+      padding: 18px;
+      background: rgba(11, 18, 25, 0.45);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }}
+    .summary-ok {{ border-color: rgba(31, 138, 91, 0.45); }}
+    .summary-limited {{ border-color: rgba(183, 138, 31, 0.45); }}
+    .summary-error {{ border-color: rgba(183, 74, 74, 0.45); }}
+    .summary-label {{
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 6px;
+    }}
+    .summary-value {{
+      font-size: 1.9rem;
+      font-weight: 700;
+    }}
+    .panel {{
+      padding: 22px;
+      margin-bottom: 24px;
+    }}
+    .table-wrap {{
+      overflow-x: auto;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }}
+    th, td {{
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(44, 65, 88, 0.7);
+      vertical-align: top;
+    }}
+    th {{
+      color: #dbe8f4;
+      background: rgba(31, 106, 165, 0.14);
+      font-weight: 600;
+    }}
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }}
+    .risk-nd, .status-n-d {{
+      background: rgba(174, 189, 203, 0.12);
+      color: var(--muted);
+      border-color: rgba(174, 189, 203, 0.25);
+    }}
+    .risk-basso {{
+      background: rgba(47, 143, 107, 0.18);
+      color: #b9f0d7;
+      border-color: rgba(47, 143, 107, 0.45);
+    }}
+    .risk-medio {{
+      background: rgba(155, 124, 47, 0.18);
+      color: #f0ddb0;
+      border-color: rgba(155, 124, 47, 0.45);
+    }}
+    .risk-alto {{
+      background: rgba(179, 93, 47, 0.18);
+      color: #f3cfb8;
+      border-color: rgba(179, 93, 47, 0.45);
+    }}
+    .risk-critico {{
+      background: rgba(177, 61, 75, 0.18);
+      color: #f4bcc4;
+      border-color: rgba(177, 61, 75, 0.45);
+    }}
+    .status-ok {{
+      background: rgba(31, 138, 91, 0.18);
+      color: #b9f0d7;
+      border-color: rgba(31, 138, 91, 0.45);
+    }}
+    .status-limited {{
+      background: rgba(183, 138, 31, 0.18);
+      color: #f0ddb0;
+      border-color: rgba(183, 138, 31, 0.45);
+    }}
+    .status-error {{
+      background: rgba(183, 74, 74, 0.18);
+      color: #f4bcc4;
+      border-color: rgba(183, 74, 74, 0.45);
+    }}
+    details {{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(11, 18, 25, 0.4);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }}
+    summary {{
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+    }}
+    summary::-webkit-details-marker {{
+      display: none;
+    }}
+    .detail-name {{
+      font-weight: 600;
+      word-break: break-word;
+    }}
+    .detail-badges {{
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }}
+    .detail-content {{
+      padding: 0 18px 18px;
+    }}
+    .report-pre {{
+      margin: 0;
+      padding: 16px;
+      background: rgba(8, 13, 19, 0.72);
+      border: 1px solid rgba(44, 65, 88, 0.65);
+      border-radius: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #dce8f4;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.9rem;
+    }}
+    .error-card {{
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(183, 74, 74, 0.09);
+      border: 1px solid rgba(183, 74, 74, 0.28);
+    }}
+    .empty-row {{
+      color: var(--muted);
+    }}
+    @media (max-width: 800px) {{
+      .container {{ padding: 20px 14px 32px; }}
+      .hero, .panel {{ padding: 18px; }}
+      summary {{
+        flex-direction: column;
+        align-items: flex-start;
+      }}
+      .detail-badges {{
+        justify-content: flex-start;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>OFFICE FOLDER FORENSIC SUMMARY</h1>
+      <p class="meta"><strong>Cartella analizzata:</strong> {_html_escape(folder_results.get('folder_path', 'N/D'))}</p>
+      <p class="meta"><strong>Data/ora generazione:</strong> {_html_escape(folder_results.get('generated_at', 'N/D'))}</p>
+      <div class="summary-grid">
+        {summary_cards_html}
+      </div>
+      <div class="notice">
+        Il report è un supporto tecnico di triage documentale. Il risk score è un indice tecnico di anomalia documentale e non costituisce prova automatica di manomissione.
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>TABELLA RIEPILOGATIVA</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome file</th>
+              <th>Famiglia Office</th>
+              <th>Creatore</th>
+              <th>Data creazione</th>
+              <th>Ultimo modificatore</th>
+              <th>Data ultima modifica</th>
+              <th>Risk score</th>
+              <th>Livello</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table_rows_html}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {error_section_html}
+
+    <section class="panel">
+      <h2>DETTAGLIO REPORT PER SINGOLO FILE</h2>
+      {detail_items_html}
+    </section>
+  </main>
+</body>
+</html>
+"""
+
+
 def build_report_paths(filepath: str) -> dict[str, str]:
     base_name = os.path.splitext(os.path.basename(filepath))[0]
     return {
@@ -951,6 +1362,7 @@ def build_folder_report_paths(folder_path: str) -> dict[str, str]:
         "txt": f"{folder_name}_folder_summary.txt",
         "csv": f"{folder_name}_folder_summary.csv",
         "json": f"{folder_name}_folder_summary.json",
+        "html": f"{folder_name}_folder_summary.html",
     }
 
 
@@ -1025,3 +1437,7 @@ def save_folder_json_report(folder_results: dict[str, Any], destination: str) ->
 
     with open(destination, "w", encoding="utf-8") as file_handle:
         json.dump(json_payload, file_handle, indent=4, ensure_ascii=False)
+
+
+def save_folder_html_report(html_text: str, destination: str) -> None:
+    save_text_report(html_text, destination)
