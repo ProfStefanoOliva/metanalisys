@@ -41,6 +41,7 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.5.md](docs/RELEASE_NOTES_v0.1.0-alpha.5.md)
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.6.md](docs/RELEASE_NOTES_v0.1.0-alpha.6.md)
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.7.md](docs/RELEASE_NOTES_v0.1.0-alpha.7.md)
+- vedere [docs/RELEASE_NOTES_v0.1.0-alpha.8.md](docs/RELEASE_NOTES_v0.1.0-alpha.8.md)
 
 ## Formati supportati
 
