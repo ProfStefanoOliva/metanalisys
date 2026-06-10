@@ -25,6 +25,7 @@ from metanalisysGUI import find_folder_report_entry
 from metanalisysGUI import format_sidebar_filename_label
 from metanalisysGUI import get_about_text
 from metanalisysGUI import get_folder_summary_counts
+from metanalisysGUI import has_folder_sidebar_files
 from metanalisysGUI import normalize_folder_display_value
 from metanalisysGUI import resolve_analysis_target
 
@@ -184,6 +185,17 @@ def test_build_folder_dashboard_cards_uses_counts_and_total_files() -> None:
     ]
 
 
+def test_build_folder_dashboard_cards_handles_empty_folder_results() -> None:
+    folder_results = {"total_files": 0, "rows": []}
+
+    assert build_folder_dashboard_cards(folder_results) == [
+        ("Totale file", "0", "#203244"),
+        ("OK", "0", "#1f4f3d"),
+        ("LIMITED", "0", "#5b4721"),
+        ("ERROR", "0", "#5a2f35"),
+    ]
+
+
 def test_build_folder_summary_table_rows_prepares_expected_display_values() -> None:
     folder_results = {
         "rows": [
@@ -315,6 +327,16 @@ def test_build_folder_file_sidebar_items_prepare_clickable_entries() -> None:
             "status": "ERROR",
         },
     ]
+
+
+def test_has_folder_sidebar_files_false_when_folder_has_no_supported_results() -> None:
+    assert has_folder_sidebar_files({"reports": []}) is False
+
+
+def test_has_folder_sidebar_files_true_when_reports_exist() -> None:
+    assert has_folder_sidebar_files(
+        {"reports": [{"filename": "sample.docx", "path": r"C:\cases\sample.docx", "status": "OK"}]}
+    ) is True
 
 
 def test_build_folder_file_sidebar_items_keep_full_name_for_hover_data() -> None:
@@ -535,6 +557,30 @@ def test_build_folder_file_detail_rows_handle_missing_values_and_errors() -> Non
     assert rows[2] == ("Famiglia Office", "N/D")
     assert rows[10] == ("Stato", "ERROR")
     assert rows[11] == ("Errore o warning", "Pacchetto non valido")
+
+
+def test_build_folder_file_detail_rows_keep_limited_status_context() -> None:
+    report_entry = {
+        "filename": "legacy.doc",
+        "path": r"C:\cases\legacy.doc",
+        "status": "LIMITED",
+        "office_family": "Word",
+        "format_extension": ".doc",
+        "creator": "N/D",
+        "last_modified_by": "N/D",
+        "created": "N/D",
+        "modified": "N/D",
+        "risk_score": 0,
+        "risk_level": "BASSO",
+        "error": "",
+    }
+
+    rows = build_folder_file_detail_rows(report_entry, None)
+
+    assert rows[2] == ("Famiglia Office", "Word")
+    assert rows[3] == ("Estensione/formato", ".doc")
+    assert rows[10] == ("Stato", "LIMITED")
+    assert rows[11] == ("Errore o warning", "N/D")
 
 
 def test_prudential_texts_are_present_in_risk_rows() -> None:
