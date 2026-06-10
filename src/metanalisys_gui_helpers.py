@@ -221,6 +221,10 @@ def build_folder_file_sidebar_items(folder_results: dict[str, Any]) -> list[dict
     return items
 
 
+def has_folder_sidebar_files(folder_results: dict[str, Any]) -> bool:
+    return bool(build_folder_file_sidebar_items(folder_results))
+
+
 def find_folder_report_entry(folder_results: dict[str, Any], target_path: str) -> dict[str, Any] | None:
     normalized_target = str(target_path).strip()
     for report in folder_results.get("reports", []):

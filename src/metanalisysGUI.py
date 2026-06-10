@@ -54,6 +54,7 @@ from metanalisys_gui_helpers import find_folder_report_entry
 from metanalisys_gui_helpers import format_sidebar_filename_label
 from metanalisys_gui_helpers import get_about_text
 from metanalisys_gui_helpers import get_folder_summary_counts
+from metanalisys_gui_helpers import has_folder_sidebar_files
 from metanalisys_gui_helpers import normalize_folder_display_value
 
 # ============================================================
@@ -143,7 +144,7 @@ class App(ctk.CTk):
     def _build_sidebar(self) -> None:
         sidebar_shell = ctk.CTkFrame(
             self,
-            width=264,
+            width=252,
             corner_radius=18,
             fg_color="#101923",
             border_width=1,
@@ -156,11 +157,11 @@ class App(ctk.CTk):
 
         sidebar = ctk.CTkScrollableFrame(
             sidebar_shell,
-            width=236,
+            width=228,
             corner_radius=18,
             fg_color="transparent",
         )
-        sidebar.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
+        sidebar.grid(row=0, column=0, sticky="nsew", padx=4, pady=6)
         sidebar.grid_columnconfigure(0, weight=1)
         self.sidebar_shell = sidebar_shell
         self.sidebar_scrollable = sidebar
@@ -209,7 +210,7 @@ class App(ctk.CTk):
             text="metanalisys",
             font=("Segoe UI", 24, "bold"),
         )
-        brand.grid(row=0, column=0, sticky="w", padx=18, pady=(18, 4))
+        brand.grid(row=0, column=0, sticky="w", padx=14, pady=(18, 4))
 
         brand_subtitle = ctk.CTkLabel(
             self.sidebar_scrollable,
@@ -219,7 +220,7 @@ class App(ctk.CTk):
             wraplength=220,
             anchor="w",
         )
-        brand_subtitle.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 18))
+        brand_subtitle.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 18))
 
         command_map = {
             "new_analysis": self.start_new_analysis,
@@ -241,7 +242,7 @@ class App(ctk.CTk):
                 text_color="#8fa7bd",
                 anchor="w",
             )
-            section_label.grid(row=current_row, column=0, sticky="ew", padx=18, pady=(0, 8))
+            section_label.grid(row=current_row, column=0, sticky="ew", padx=14, pady=(0, 8))
             current_row += 1
 
             for button_key, button_label in section["items"]:
@@ -255,7 +256,7 @@ class App(ctk.CTk):
                     hover_color="#173b59",
                     command=command_map[button_key],
                 )
-                button.grid(row=current_row, column=0, sticky="ew", padx=14, pady=4)
+                button.grid(row=current_row, column=0, sticky="ew", padx=10, pady=4)
                 self.nav_buttons[button_key] = button
                 current_row += 1
 
@@ -300,7 +301,7 @@ class App(ctk.CTk):
             text_color="#8fa7bd",
             anchor="w",
         )
-        section_label.grid(row=current_row, column=0, sticky="ew", padx=18, pady=(0, 8))
+        section_label.grid(row=current_row, column=0, sticky="ew", padx=14, pady=(0, 8))
         current_row += 1
 
         command_map = {
@@ -333,7 +334,7 @@ class App(ctk.CTk):
                 row=current_row,
                 column=0,
                 sticky="ew",
-                padx=(32, 14) if is_child else (14, 14),
+                padx=(20, 10) if is_child else (10, 10),
                 pady=2 if is_child else 3,
             )
             if not is_child:
@@ -366,7 +367,7 @@ class App(ctk.CTk):
             text_color="#8fa7bd",
             anchor="w",
         )
-        section_label.grid(row=current_row, column=0, sticky="ew", padx=18, pady=(0, 8))
+        section_label.grid(row=current_row, column=0, sticky="ew", padx=14, pady=(0, 8))
         current_row += 1
 
         command_map = {
@@ -390,7 +391,7 @@ class App(ctk.CTk):
                 hover_color="#1f4d70",
                 command=command_map[key],
             )
-            button.grid(row=current_row, column=0, sticky="ew", padx=14, pady=3)
+            button.grid(row=current_row, column=0, sticky="ew", padx=10, pady=3)
             self.selected_file_section_buttons[key] = button
             current_row += 1
 
