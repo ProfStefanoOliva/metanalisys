@@ -42,6 +42,7 @@ Per un inquadramento prudente dell'uso:
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.6.md](docs/RELEASE_NOTES_v0.1.0-alpha.6.md)
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.7.md](docs/RELEASE_NOTES_v0.1.0-alpha.7.md)
 - vedere [docs/RELEASE_NOTES_v0.1.0-alpha.8.md](docs/RELEASE_NOTES_v0.1.0-alpha.8.md)
+- vedere [docs/RELEASE_NOTES_v0.1.0-alpha.9.md](docs/RELEASE_NOTES_v0.1.0-alpha.9.md)
 
 ## Formati supportati
 
@@ -74,6 +75,31 @@ Creazione ambiente virtuale in PowerShell:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install Pillow customtkinter
+```
+
+## Windows portable release
+
+Le GitHub Releases possono includere un archivio Windows x64 portable pensato per utenti finali non tecnici.
+
+### Utente finale
+
+Scaricare lo ZIP Windows portable dalla GitHub Release, estrarlo completamente ed eseguire `metanalisys.exe`.
+
+La build portable non richiede installazione di Python, installazione manuale di dipendenze con `pip`, clone del repository o uso del terminale.
+
+Anche nella forma portable, `metanalisys` resta software in fase Alpha: e' un supporto tecnico preliminare e non sostituisce procedure autorizzate, catena di custodia o valutazione professionale.
+
+### Sviluppatore
+
+Lo sviluppatore continua a usare il flusso sorgente: clone del repository, creazione del virtual environment e installazione delle dipendenze runtime e, se necessario, di test o build.
+
+Per preparare localmente il pacchetto Windows portable:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r .\requirements-build.txt
+.\build_windows_portable.ps1
 ```
 
 ## Testing
