@@ -2,6 +2,27 @@
 
 `metanalisys` e uno strumento Python di supporto tecnico all'analisi preliminare dei metadati di file Microsoft Office. Il progetto include una versione a riga di comando e una GUI basata su `customtkinter`.
 
+## Download Windows
+
+**Windows x64 portable - v0.1.0-alpha.9**
+
+[Scarica metanalisys v0.1.0-alpha.9 per Windows x64](https://github.com/ProfStefanoOliva/metanalisys/releases/download/v0.1.0-alpha.9/metanalisys-v0.1.0-alpha.9-Windows-x64.zip)
+
+Non e' necessario installare Python.
+
+Per avviare il programma:
+
+1. scaricare il file ZIP;
+2. estrarlo completamente;
+3. aprire la cartella estratta;
+4. eseguire `metanalisys.exe`.
+
+Il progetto resta in fase Alpha. Questa build e' destinata a valutazione tecnica, test e sperimentazione controllata; non sostituisce valutazione professionale o procedure forensi appropriate.
+
+Per verificare il download: [SHA256SUMS.txt](https://github.com/ProfStefanoOliva/metanalisys/releases/download/v0.1.0-alpha.9/SHA256SUMS.txt)
+
+Tutte le release sono disponibili nella [pagina GitHub Releases](https://github.com/ProfStefanoOliva/metanalisys/releases).
+
 ## Development status: Alpha
 
 Il software e attualmente in fase `Alpha`. In questo stato e adatto a valutazione tecnica, test e sperimentazione controllata, ma non deve essere usato come unica base per conclusioni forensi, decisioni procedurali o valutazioni probatorie.
